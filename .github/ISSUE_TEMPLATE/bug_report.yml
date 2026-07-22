@@ -1,0 +1,31 @@
+name: Bug report
+description: Report reproducible incorrect behavior without including personal data.
+body:
+  - type: markdown
+    attributes:
+      value: Do not include secrets, access tokens, or real case content. Report vulnerabilities using SECURITY.md.
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction steps
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Commit or version
+    validations:
+      required: true
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Environment
+      options: [Local Windows, Local macOS, Local Linux, CI, Other]
+    validations:
+      required: true

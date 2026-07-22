@@ -1,0 +1,42 @@
+:root {
+  color: #172033;
+  background: #f5f7fb;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-synthesis: none;
+  line-height: 1.5;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; }
+a { color: #164f9c; }
+button, .button { border: 0; border-radius: .4rem; background: #1659ad; color: white; cursor: pointer; font: inherit; padding: .65rem 1rem; text-decoration: none; }
+button:disabled { cursor: wait; opacity: .7; }
+input, textarea, select { border: 1px solid #b7c1d1; border-radius: .35rem; display: block; font: inherit; margin-top: .3rem; padding: .65rem; width: 100%; }
+label { display: block; font-weight: 650; }
+
+.app-header { align-items: center; background: #102443; color: white; display: flex; gap: 2rem; justify-content: space-between; padding: .9rem max(1rem, calc((100% - 72rem) / 2)); }
+.app-header label { font-size: .85rem; }
+.app-header select { min-width: 20rem; padding: .4rem; }
+.brand { color: white; font-size: 1.3rem; font-weight: 800; text-decoration: none; }
+.container { margin: 0 auto; max-width: 72rem; padding: 2rem 1rem; }
+.page-heading { align-items: center; display: flex; justify-content: space-between; margin-bottom: 1.5rem; }
+.page-heading h1 { margin-bottom: 0; }
+.page-heading p { color: #526078; margin-top: .25rem; }
+.case-list { display: grid; gap: .75rem; }
+.case-card { background: white; border: 1px solid #dbe1eb; border-radius: .5rem; color: inherit; display: grid; gap: .25rem; padding: 1rem; text-decoration: none; }
+.case-card:hover, .case-card:focus { border-color: #1659ad; box-shadow: 0 2px 8px #1720331f; }
+.case-number { color: #526078; display: block; font-size: .82rem; font-weight: 700; letter-spacing: .04em; margin: .5rem 0; text-transform: uppercase; }
+.form-card, .details-card { background: white; border: 1px solid #dbe1eb; border-radius: .6rem; max-width: 48rem; padding: 1.5rem; }
+.form-card form { display: grid; gap: 1rem; }
+.actions { align-items: center; display: flex; gap: 1rem; justify-content: flex-end; }
+.error { background: #fff0f0; border-left: 4px solid #b42318; color: #7a271a; padding: .75rem; }
+dl { display: flex; gap: 2rem; }
+dt { color: #526078; font-size: .8rem; font-weight: 700; text-transform: uppercase; }
+dd { margin: .1rem 0 0; }
+.description { white-space: pre-wrap; }
+
+@media (max-width: 640px) {
+  .app-header, .page-heading { align-items: stretch; flex-direction: column; }
+  .app-header { gap: .75rem; }
+  .app-header select { min-width: 0; }
+}

@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: '**/*.csproj'
+      - run: dotnet restore MatterHarbor.sln
+      - run: dotnet tool restore
+      - run: dotnet format MatterHarbor.sln --verify-no-changes --no-restore
+      - run: dotnet build MatterHarbor.sln --configuration Release --no-restore
+      - run: dotnet test MatterHarbor.sln --configuration Release --no-build --logger trx
+      - run: dotnet list MatterHarbor.sln package --vulnerable --include-transitive
+
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: src/MatterHarbor.Web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.0
+          cache: npm
+          cache-dependency-path: src/MatterHarbor.Web/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run test
+      - run: npm run build
+      - run: npm audit --audit-level=high
+
+  containers-and-infrastructure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build --file src/MatterHarbor.Api/Dockerfile --tag matterharbor-api:ci .
+      - run: docker build --file src/MatterHarbor.Worker/Dockerfile --tag matterharbor-worker:ci .
+      - run: docker build --file src/MatterHarbor.Web/Dockerfile --tag matterharbor-web:ci .
+      - name: Validate Bicep syntax
+        run: az bicep build --file infra/bicep/main.bicep
