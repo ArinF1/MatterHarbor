@@ -1,17 +1,16 @@
-import { FormEvent, useEffect, useState } from 'react'
+import { FormEvent, ReactNode, useEffect, useState } from 'react'
 import {
   Link,
-  Navigate,
-  Outlet,
+  Redirect,
   Route,
-  Routes,
-  useNavigate,
+  Switch,
+  useLocation,
   useParams,
-} from 'react-router-dom'
+} from 'wouter'
 import { api, CaseItem, CasePriority } from './api'
 import { PersonaContext, personaOptions, usePersona } from './persona'
 
-function Layout() {
+function Layout({ children }: { children: ReactNode }) {
   const [persona, setPersonaState] = useState(() => localStorage.getItem('matterharbor-persona') ?? 'alex')
   const setPersona = (next: string) => {
     localStorage.setItem('matterharbor-persona', next)
@@ -21,7 +20,7 @@ function Layout() {
   return (
     <PersonaContext.Provider value={{ persona, setPersona }}>
       <header className="app-header">
-        <Link className="brand" to="/cases">MatterHarbor</Link>
+        <Link className="brand" href="/cases">MatterHarbor</Link>
         <label>
           Development persona
           <select value={persona} onChange={(event) => setPersona(event.target.value)}>
@@ -33,7 +32,7 @@ function Layout() {
           </select>
         </label>
       </header>
-      <main className="container"><Outlet /></main>
+      <main className="container">{children}</main>
     </PersonaContext.Provider>
   )
 }
@@ -56,13 +55,13 @@ function CaseListPage() {
     <>
       <div className="page-heading">
         <div><h1>Cases</h1><p>Cases for the selected development organization.</p></div>
-        <Link className="button" to="/cases/new">Create case</Link>
+        <Link className="button" href="/cases/new">Create case</Link>
       </div>
       {error && <p className="error" role="alert">{error}</p>}
       {cases.length === 0 && !error ? <p>No cases yet.</p> : (
         <div className="case-list">
           {cases.map((item) => (
-            <Link className="case-card" key={item.id} to={`/cases/${item.id}`}>
+            <Link className="case-card" key={item.id} href={`/cases/${item.id}`}>
               <span className="case-number">{item.caseNumber}</span>
               <strong>{item.title}</strong>
               <span>{item.priority} · {item.status}</span>
@@ -76,7 +75,7 @@ function CaseListPage() {
 
 export function CreateCasePage() {
   const { persona } = usePersona()
-  const navigate = useNavigate()
+  const [, navigate] = useLocation()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [priority, setPriority] = useState<CasePriority>('Normal')
@@ -111,7 +110,7 @@ export function CreateCasePage() {
         <label>Priority<select value={priority} onChange={(event) => setPriority(event.target.value as CasePriority)}>
           <option>Low</option><option>Normal</option><option>High</option><option>Critical</option>
         </select></label>
-        <div className="actions"><Link to="/cases">Cancel</Link><button disabled={submitting} type="submit">{submitting ? 'Creating…' : 'Create case'}</button></div>
+        <div className="actions"><Link href="/cases">Cancel</Link><button disabled={submitting} type="submit">{submitting ? 'Creating…' : 'Create case'}</button></div>
       </form>
     </section>
   )
@@ -119,7 +118,7 @@ export function CreateCasePage() {
 
 function CaseDetailsPage() {
   const { persona } = usePersona()
-  const { id = '' } = useParams()
+  const { id = '' } = useParams<{ id: string }>()
   const [item, setItem] = useState<CaseItem | null>(null)
   const [error, setError] = useState('')
 
@@ -136,7 +135,7 @@ function CaseDetailsPage() {
 
   return (
     <article className="details-card">
-      <Link to="/cases">← All cases</Link>
+      <Link href="/cases">← All cases</Link>
       <span className="case-number">{item.caseNumber}</span>
       <h1>{item.title}</h1>
       <dl><div><dt>Status</dt><dd>{item.status}</dd></div><div><dt>Priority</dt><dd>{item.priority}</dd></div><div><dt>Version</dt><dd>{item.version}</dd></div></dl>
@@ -151,13 +150,13 @@ function toMessage(reason: unknown): string {
 
 export function AppRoutes() {
   return (
-    <Routes>
-      <Route element={<Layout />}>
-        <Route index element={<Navigate to="/cases" replace />} />
-        <Route path="cases" element={<CaseListPage />} />
-        <Route path="cases/new" element={<CreateCasePage />} />
-        <Route path="cases/:id" element={<CaseDetailsPage />} />
-      </Route>
-    </Routes>
+    <Layout>
+      <Switch>
+        <Route path="/cases/new" component={CreateCasePage} />
+        <Route path="/cases/:id" component={CaseDetailsPage} />
+        <Route path="/cases" component={CaseListPage} />
+        <Route><Redirect to="/cases" replace /></Route>
+      </Switch>
+    </Layout>
   )
 }
