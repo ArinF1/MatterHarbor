@@ -1,7 +1,8 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, expect, test, vi } from 'vitest'
+import { Router } from 'wouter'
+import { memoryLocation } from 'wouter/memory-location'
 import { AppRoutes } from './App'
 
 const createdCase = {
@@ -28,7 +29,8 @@ test('creates a case with persona and idempotency headers, then opens it', async
     .mockResolvedValueOnce(new Response(JSON.stringify(createdCase), { status: 200 }))
   vi.stubGlobal('fetch', fetchMock)
   const user = userEvent.setup()
-  render(<MemoryRouter initialEntries={['/cases/new']}><AppRoutes /></MemoryRouter>)
+  const { hook } = memoryLocation({ path: '/cases/new' })
+  render(<Router hook={hook}><AppRoutes /></Router>)
 
   await user.type(screen.getByLabelText('Title'), createdCase.title)
   await user.type(screen.getByLabelText('Description'), createdCase.description)
