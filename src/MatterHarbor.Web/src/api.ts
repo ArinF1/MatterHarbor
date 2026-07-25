@@ -26,7 +26,7 @@ export interface ProblemDetails {
   detail?: string
 }
 
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5080'
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5080'
 
 async function request<T>(path: string, persona: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${apiBaseUrl}${path}`, {
