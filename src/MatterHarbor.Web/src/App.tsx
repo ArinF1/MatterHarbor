@@ -11,10 +11,12 @@ import { api, CaseItem, CasePriority } from './api'
 import { PersonaContext, personaOptions, usePersona } from './persona'
 
 function Layout({ children }: { children: ReactNode }) {
+  const [, navigate] = useLocation()
   const [persona, setPersonaState] = useState(() => localStorage.getItem('matterharbor-persona') ?? 'alex')
   const setPersona = (next: string) => {
     localStorage.setItem('matterharbor-persona', next)
     setPersonaState(next)
+    navigate('/cases')
   }
 
   return (
