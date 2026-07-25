@@ -11,6 +11,7 @@ All notable changes will be documented here. The format follows Keep a Changelog
 ### Fixed
 
 - Made an empty web container API base URL fall back to the documented local API address.
+- Reset organization-scoped navigation to the case list when switching development personas.
 
 ### Security
 

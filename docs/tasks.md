@@ -9,6 +9,7 @@
 - [x] Idempotency, optimistic concurrency, creation audit, and transactional outbox
 - [x] Leased local outbox processing and Azure Service Bus publisher adapter
 - [x] React list/create/details flow and meaningful interaction test
+- [x] Persona switching resets organization-scoped navigation and preserves tenant isolation
 - [x] Health, rate limiting, problem details, security headers, and OpenTelemetry
 - [x] Testcontainers integration tests, architecture tests, CI, containers, Bicep, and documentation
 
