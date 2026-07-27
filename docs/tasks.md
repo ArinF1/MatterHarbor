@@ -12,14 +12,16 @@
 - [x] Persona switching resets organization-scoped navigation and preserves tenant isolation
 - [x] Health, rate limiting, problem details, security headers, and OpenTelemetry
 - [x] Testcontainers integration tests, architecture tests, CI, containers, Bicep, and documentation
+- [x] Hosted HTTP tests for authentication, tenant isolation, problem details, rate limiting, and idempotency replay
+- [x] Unskipped full-stack Playwright CI with worker outbox verification
+- [x] Accessible loading, retryable error, and concurrency-conflict web states
+- [x] v0.1 scope, release notes, dependency locks, reproducible build instructions, and private vulnerability reporting
 
 ## Highest-priority next tasks
 
-1. Add full HTTP integration tests for authentication, tenant isolation, validation/problem details, rate limiting, and replay status/headers.
-2. Make Playwright run end to end in CI with the API, worker, web app, and PostgreSQL orchestration.
-3. Implement roles, assignment rules, allowed state transitions, ETag/If-Match, and audit every case mutation.
-4. Operationalize outbox retries, dead-letter handling, retention, metrics, and Azure Service Bus contract tests.
-5. Build controlled migration/deployment and backup/restore runbooks before any shared environment.
+1. Implement roles, assignment rules, allowed state transitions, ETag/If-Match, and audit every case mutation.
+2. Operationalize outbox retries, dead-letter handling, retention, metrics, and Azure Service Bus contract tests.
+3. Build controlled migration/deployment and backup/restore runbooks before any shared environment.
 
 ## Deferred product work
 

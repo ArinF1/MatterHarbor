@@ -7,7 +7,7 @@ import {
   useLocation,
   useParams,
 } from 'wouter'
-import { api, CaseItem, CasePriority } from './api'
+import { api, ApiError, CaseItem, CasePriority, CaseStatus } from './api'
 import { PersonaContext, personaOptions, usePersona } from './persona'
 
 function Layout({ children }: { children: ReactNode }) {
@@ -43,15 +43,25 @@ function CaseListPage() {
   const { persona } = usePersona()
   const [cases, setCases] = useState<CaseItem[]>([])
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [reloadToken, setReloadToken] = useState(0)
 
   useEffect(() => {
     let active = true
     setError('')
+    setLoading(true)
     api.listCases(persona)
-      .then((items) => active && setCases(items))
-      .catch((reason: unknown) => active && setError(toMessage(reason)))
+      .then((items) => {
+        if (active) setCases(items)
+      })
+      .catch((reason: unknown) => {
+        if (active) setError(toMessage(reason))
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
     return () => { active = false }
-  }, [persona])
+  }, [persona, reloadToken])
 
   return (
     <>
@@ -59,8 +69,9 @@ function CaseListPage() {
         <div><h1>Cases</h1><p>Cases for the selected development organization.</p></div>
         <Link className="button" href="/cases/new">Create case</Link>
       </div>
-      {error && <p className="error" role="alert">{error}</p>}
-      {cases.length === 0 && !error ? <p>No cases yet.</p> : (
+      {loading && <p className="status" role="status">Loading cases…</p>}
+      {error && <div className="error" role="alert"><p>{error}</p><button type="button" onClick={() => setReloadToken((value) => value + 1)}>Try again</button></div>}
+      {!loading && cases.length === 0 && !error ? <p>No cases yet.</p> : (
         <div className="case-list">
           {cases.map((item) => (
             <Link className="case-card" key={item.id} href={`/cases/${item.id}`}>
@@ -106,7 +117,7 @@ export function CreateCasePage() {
     <section className="form-card">
       <h1>Create case</h1>
       {error && <p className="error" role="alert">{error}</p>}
-      <form onSubmit={submit}>
+      <form onSubmit={submit} aria-busy={submitting}>
         <label>Title<input value={title} onChange={(event) => setTitle(event.target.value)} required maxLength={200} /></label>
         <label>Description<textarea value={description} onChange={(event) => setDescription(event.target.value)} required maxLength={4000} rows={7} /></label>
         <label>Priority<select value={priority} onChange={(event) => setPriority(event.target.value as CasePriority)}>
@@ -123,17 +134,52 @@ function CaseDetailsPage() {
   const { id = '' } = useParams<{ id: string }>()
   const [item, setItem] = useState<CaseItem | null>(null)
   const [error, setError] = useState('')
+  const [reloadToken, setReloadToken] = useState(0)
+  const [nextStatus, setNextStatus] = useState<CaseStatus>('New')
+  const [saving, setSaving] = useState(false)
+  const [conflict, setConflict] = useState(false)
 
   useEffect(() => {
     let active = true
+    setError('')
+    setItem(null)
+    setConflict(false)
     api.getCase(persona, id)
-      .then((value) => active && setItem(value))
-      .catch((reason: unknown) => active && setError(toMessage(reason)))
+      .then((value) => {
+        if (active) {
+          setItem(value)
+          setNextStatus(value.status)
+        }
+      })
+      .catch((reason: unknown) => {
+        if (active) setError(toMessage(reason))
+      })
     return () => { active = false }
-  }, [id, persona])
+  }, [id, persona, reloadToken])
 
-  if (error) return <p className="error" role="alert">{error}</p>
-  if (!item) return <p>Loading case…</p>
+  const updateStatus = async (event: FormEvent) => {
+    event.preventDefault()
+    if (!item) return
+    setSaving(true)
+    setError('')
+    setConflict(false)
+    try {
+      const updated = await api.changeCaseStatus(persona, item.id, nextStatus, item.version)
+      setItem(updated)
+      setNextStatus(updated.status)
+    } catch (reason) {
+      if (reason instanceof ApiError && reason.status === 409) {
+        setConflict(true)
+      } else {
+        setError(toMessage(reason))
+      }
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (error && !item) return <div className="error" role="alert"><p>{error}</p><button type="button" onClick={() => setReloadToken((value) => value + 1)}>Try again</button></div>
+  if (!item) return <p className="status" role="status">Loading case…</p>
 
   return (
     <article className="details-card">
@@ -141,6 +187,14 @@ function CaseDetailsPage() {
       <span className="case-number">{item.caseNumber}</span>
       <h1>{item.title}</h1>
       <dl><div><dt>Status</dt><dd>{item.status}</dd></div><div><dt>Priority</dt><dd>{item.priority}</dd></div><div><dt>Version</dt><dd>{item.version}</dd></div></dl>
+      {error && <p className="error" role="alert">{error}</p>}
+      {conflict && <div className="conflict" role="alert"><p>This case changed while you were editing. Reload the latest version before trying again.</p><button type="button" onClick={() => setReloadToken((value) => value + 1)}>Reload case</button></div>}
+      <form className="status-form" onSubmit={updateStatus} aria-busy={saving}>
+        <label>Status<select value={nextStatus} onChange={(event) => setNextStatus(event.target.value as CaseStatus)}>
+          <option>New</option><option>InProgress</option><option>Resolved</option><option>Closed</option>
+        </select></label>
+        <button disabled={saving || nextStatus === item.status} type="submit">{saving ? 'Updating…' : 'Update status'}</button>
+      </form>
       <h2>Description</h2><p className="description">{item.description}</p>
     </article>
   )

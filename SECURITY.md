@@ -2,13 +2,13 @@
 
 ## Supported versions
 
-MatterHarbor has no supported production release yet. Security fixes are applied to the default branch while the project is in early development.
+MatterHarbor v0.1.x receives best-effort security fixes on the default branch for its documented fictional-data learning scope. It is not a supported production release.
 
 ## Reporting a vulnerability
 
 Do not open a public issue. Use [GitHub private vulnerability reporting](https://github.com/ArinF1/MatterHarbor/security/advisories/new) with a description, reproduction steps, affected commit, and impact. Do not include real personal data or production credentials.
 
-You should receive an acknowledgement within five business days. Private vulnerability reporting must be enabled in the repository security settings when the repository becomes public. No bug bounty or disclosure timeline is currently offered.
+You should receive an acknowledgement within five business days. Private vulnerability reporting is enabled for the public repository and is the required reporting path. No bug bounty or disclosure timeline is currently offered.
 
 ## Current limitations
 

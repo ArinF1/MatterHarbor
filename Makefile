@@ -1,14 +1,17 @@
-.PHONY: restore build test format-check web-install web-build web-test web-lint verify infra-validate
+.PHONY: restore build test e2e format-check web-install web-build web-test web-lint verify infra-validate
 
 restore:
-	dotnet restore MatterHarbor.sln
+	dotnet restore MatterHarbor.sln --locked-mode
 	dotnet tool restore
 
 build:
 	dotnet build MatterHarbor.sln --no-restore
 
 test:
-	dotnet test MatterHarbor.sln --no-build
+	dotnet test MatterHarbor.sln --no-build --filter "Category!=EndToEnd"
+
+e2e:
+	pwsh ./scripts/test-e2e.ps1
 
 format-check:
 	dotnet format MatterHarbor.sln --verify-no-changes --no-restore

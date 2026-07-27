@@ -18,12 +18,12 @@ jobs:
         with:
           global-json-file: global.json
           cache: true
-          cache-dependency-path: '**/*.csproj'
-      - run: dotnet restore MatterHarbor.sln
+          cache-dependency-path: '**/packages.lock.json'
+      - run: dotnet restore MatterHarbor.sln --locked-mode
       - run: dotnet tool restore
       - run: dotnet format MatterHarbor.sln --verify-no-changes --no-restore
       - run: dotnet build MatterHarbor.sln --configuration Release --no-restore
-      - run: dotnet test MatterHarbor.sln --configuration Release --no-build --logger trx
+      - run: dotnet test MatterHarbor.sln --configuration Release --no-build --filter "Category!=EndToEnd" --logger trx
       - run: dotnet list MatterHarbor.sln package --vulnerable --include-transitive
 
   frontend:
@@ -55,3 +55,28 @@ jobs:
       - run: docker build --file src/MatterHarbor.Web/Dockerfile --tag matterharbor-web:ci .
       - name: Validate Bicep syntax
         run: az bicep build --file infra/bicep/main.bicep
+
+  end-to-end:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: '**/packages.lock.json'
+      - run: dotnet restore tests/MatterHarbor.EndToEndTests/MatterHarbor.EndToEndTests.csproj --locked-mode
+      - run: dotnet build tests/MatterHarbor.EndToEndTests/MatterHarbor.EndToEndTests.csproj --configuration Release --no-restore
+      - run: pwsh tests/MatterHarbor.EndToEndTests/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
+      - run: docker compose --file compose.e2e.yaml up --build --detach --wait
+      - run: curl --fail --retry 20 --retry-delay 2 --retry-all-errors http://127.0.0.1:5080/health/ready
+      - run: curl --fail --retry 20 --retry-delay 2 --retry-all-errors http://127.0.0.1:5173/
+      - run: dotnet test tests/MatterHarbor.EndToEndTests/MatterHarbor.EndToEndTests.csproj --configuration Release --no-build --logger trx
+        env:
+          MATTERHARBOR_E2E_BASE_URL: http://127.0.0.1:5173
+          MATTERHARBOR_E2E_CONNECTION_STRING: Host=127.0.0.1;Port=5433;Database=matterharbor;Username=matterharbor;Password=matterharbor_e2e
+      - if: always()
+        run: docker compose --file compose.e2e.yaml logs
+      - if: always()
+        run: docker compose --file compose.e2e.yaml down --volumes

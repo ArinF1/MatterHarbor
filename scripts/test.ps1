@@ -16,10 +16,10 @@ function Invoke-Checked {
     }
 }
 
-Invoke-Checked 'dotnet' @('restore', 'MatterHarbor.sln')
+Invoke-Checked 'dotnet' @('restore', 'MatterHarbor.sln', '--locked-mode')
 Invoke-Checked 'dotnet' @('tool', 'restore')
 Invoke-Checked 'dotnet' @('build', 'MatterHarbor.sln', '--no-restore')
-Invoke-Checked 'dotnet' @('test', 'MatterHarbor.sln', '--no-build')
+Invoke-Checked 'dotnet' @('test', 'MatterHarbor.sln', '--no-build', '--filter', 'Category!=EndToEnd')
 Invoke-Checked 'dotnet' @('format', 'MatterHarbor.sln', '--verify-no-changes', '--no-restore')
 Invoke-Checked $npmCommand @('--prefix', 'src/MatterHarbor.Web', 'ci')
 Invoke-Checked $npmCommand @('--prefix', 'src/MatterHarbor.Web', 'run', 'lint')
