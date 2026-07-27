@@ -70,8 +70,8 @@ jobs:
       - run: dotnet build tests/MatterHarbor.EndToEndTests/MatterHarbor.EndToEndTests.csproj --configuration Release --no-restore
       - run: pwsh tests/MatterHarbor.EndToEndTests/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
       - run: docker compose --file compose.e2e.yaml up --build --detach --wait
-      - run: curl --fail --retry 20 --retry-delay 2 --retry-connrefused http://127.0.0.1:5080/health/ready
-      - run: curl --fail --retry 20 --retry-delay 2 --retry-connrefused http://127.0.0.1:5173/
+      - run: curl --fail --retry 20 --retry-delay 2 --retry-all-errors http://127.0.0.1:5080/health/ready
+      - run: curl --fail --retry 20 --retry-delay 2 --retry-all-errors http://127.0.0.1:5173/
       - run: dotnet test tests/MatterHarbor.EndToEndTests/MatterHarbor.EndToEndTests.csproj --configuration Release --no-build --logger trx
         env:
           MATTERHARBOR_E2E_BASE_URL: http://127.0.0.1:5173
