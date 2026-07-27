@@ -76,17 +76,31 @@ else
 }
 
 builder.Services.AddAuthorization();
+var rateLimitPermitLimit = builder.Configuration.GetValue("RateLimiting:PermitLimit", 120);
+var rateLimitWindow = TimeSpan.FromSeconds(
+    builder.Configuration.GetValue("RateLimiting:WindowSeconds", 60));
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.OnRejected = async (context, cancellationToken) =>
+    {
+        context.HttpContext.Response.ContentType = "application/problem+json";
+        await context.HttpContext.Response.WriteAsJsonAsync(new
+        {
+            type = "https://matterharbor.dev/problems/rate-limit-exceeded",
+            title = "Rate limit exceeded",
+            status = StatusCodes.Status429TooManyRequests,
+            detail = "Too many requests. Wait before trying again."
+        }, cancellationToken);
+    };
     options.AddPolicy("api", httpContext => RateLimitPartition.GetFixedWindowLimiter(
         httpContext.User.FindFirst("sub")?.Value ??
         httpContext.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ??
         httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         _ => new FixedWindowRateLimiterOptions
         {
-            PermitLimit = 120,
-            Window = TimeSpan.FromMinutes(1),
+            PermitLimit = rateLimitPermitLimit,
+            Window = rateLimitWindow,
             QueueLimit = 0
         }));
 });

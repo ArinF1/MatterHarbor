@@ -24,9 +24,20 @@ export interface CreateCaseInput {
 export interface ProblemDetails {
   title?: string
   detail?: string
+  type?: string
 }
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5080'
+
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly type?: string,
+  ) {
+    super(message)
+  }
+}
 
 async function request<T>(path: string, persona: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${apiBaseUrl}${path}`, {
@@ -40,7 +51,11 @@ async function request<T>(path: string, persona: string, init?: RequestInit): Pr
 
   if (!response.ok) {
     const problem = (await response.json().catch(() => ({}))) as ProblemDetails
-    throw new Error(problem.detail ?? problem.title ?? `Request failed (${response.status})`)
+    throw new ApiError(
+      problem.detail ?? problem.title ?? `Request failed (${response.status})`,
+      response.status,
+      problem.type,
+    )
   }
 
   return (await response.json()) as T
@@ -54,5 +69,10 @@ export const api = {
       method: 'POST',
       headers: { 'Idempotency-Key': idempotencyKey },
       body: JSON.stringify(input),
+    }),
+  changeCaseStatus: (persona: string, id: string, status: CaseStatus, version: number) =>
+    request<CaseItem>(`/api/cases/${id}/status`, persona, {
+      method: 'PUT',
+      body: JSON.stringify({ status, version }),
     }),
 }

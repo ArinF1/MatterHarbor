@@ -4,8 +4,6 @@ MatterHarbor is not production-ready. Priorities are ordered by risk reduction a
 
 ## Now — harden the first slice
 
-- Add API-level integration tests covering authentication, HTTP problem responses, headers, rate limits, and idempotent response codes.
-- Run a non-skipped Playwright stack in CI and add accessible loading/error/conflict UX.
 - Add production migration bundles/runbooks; stop relying on Development startup migration outside local use.
 - Add roles and explicit case transition/assignment policies with complete audit coverage.
 - Add outbox retry backoff, dead-letter operations, retention, metrics, and Azure Service Bus contract tests.

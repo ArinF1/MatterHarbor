@@ -30,6 +30,12 @@ label { display: block; font-weight: 650; }
 .form-card form { display: grid; gap: 1rem; }
 .actions { align-items: center; display: flex; gap: 1rem; justify-content: flex-end; }
 .error { background: #fff0f0; border-left: 4px solid #b42318; color: #7a271a; padding: .75rem; }
+.error p, .conflict p { margin-top: 0; }
+.error button, .conflict button { background: #7a271a; }
+.status { color: #526078; }
+.conflict { background: #fff8e6; border-left: 4px solid #b54708; color: #7a2e0e; padding: .75rem; }
+.status-form { align-items: end; border-top: 1px solid #dbe1eb; display: flex; gap: 1rem; margin-top: 1.5rem; padding-top: 1.5rem; }
+.status-form label { flex: 1; }
 dl { display: flex; gap: 2rem; }
 dt { color: #526078; font-size: .8rem; font-weight: 700; text-transform: uppercase; }
 dd { margin: .1rem 0 0; }

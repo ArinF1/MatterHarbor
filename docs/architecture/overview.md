@@ -44,6 +44,10 @@ flowchart TB
 
 This design provides at-least-once processing. Consumers must remain idempotent; local logging does not prove Azure Service Bus semantics.
 
+## Verification architecture
+
+Hosted integration tests execute the real HTTP middleware and endpoints against disposable PostgreSQL. The Playwright job starts disposable web, API, worker, and PostgreSQL containers, creates a fictional case through the browser, and confirms in PostgreSQL that the worker processed its outbox message.
+
 ## Trade-offs
 
 The application uses an explicit `ICaseStore` port instead of a generic repository. PostgreSQL advisory locks serialize same-key retries without a distributed cache. Read models currently use domain entities because the slice is small; dedicated projections can be introduced when queries diverge. Database migrations run automatically only at Development API startup; controlled deployment migrations remain future work.

@@ -17,7 +17,7 @@ The repository currently implements one small vertical slice:
 - PostgreSQL migrations and development seed personas;
 - liveness/readiness endpoints, rate limiting, problem details, security headers, and OpenTelemetry;
 - React persona selection, case list, creation form, and details screen;
-- unit, architecture, PostgreSQL Testcontainers integration, frontend interaction, and opt-in Playwright tests;
+- unit, architecture, hosted HTTP/PostgreSQL integration, frontend interaction, and live Playwright tests;
 - local Compose dependencies, container definitions, CI, and un-deployed Bicep infrastructure.
 
 Azure deployment, file uploads and malware scanning, GDPR workflows, search, assignment workflows, dashboards, backups, and operational hardening are planned, not implemented.
@@ -70,13 +70,13 @@ npm --prefix src/MatterHarbor.Web run dev
 
 Open <http://localhost:5173>. The API uses the launch profile at <http://localhost:5080>; Jaeger is at <http://localhost:16686>. The API applies migrations and inserts fictional personas only in `Development`.
 
-Run all normal checks:
+Run all normal checks (the live browser project runs separately because it owns a disposable stack):
 
 ```bash
-dotnet restore MatterHarbor.sln
+dotnet restore MatterHarbor.sln --locked-mode
 dotnet tool restore
 dotnet build MatterHarbor.sln --no-restore
-dotnet test MatterHarbor.sln --no-build
+dotnet test MatterHarbor.sln --no-build --filter "Category!=EndToEnd"
 dotnet format MatterHarbor.sln --verify-no-changes --no-restore
 npm --prefix src/MatterHarbor.Web ci
 npm --prefix src/MatterHarbor.Web run lint
@@ -84,7 +84,20 @@ npm --prefix src/MatterHarbor.Web run test
 npm --prefix src/MatterHarbor.Web run build
 ```
 
-On PowerShell 7, `./scripts/test.ps1` performs the same workflow and handles Windows' `npm.cmd` launcher. See [local development](docs/development/local-development.md).
+On PowerShell 7, `./scripts/test.ps1` performs the same workflow and handles Windows' `npm.cmd` launcher. Run `./scripts/test-e2e.ps1` for the unskipped API + worker + web + PostgreSQL browser flow. Release verification also includes:
+
+```bash
+dotnet list MatterHarbor.sln package --vulnerable --include-transitive
+npm --prefix src/MatterHarbor.Web audit --audit-level=high
+docker compose config --quiet
+docker compose --file compose.e2e.yaml config --quiet
+docker build --file src/MatterHarbor.Api/Dockerfile --tag matterharbor-api:verify .
+docker build --file src/MatterHarbor.Worker/Dockerfile --tag matterharbor-worker:verify .
+docker build --file src/MatterHarbor.Web/Dockerfile --tag matterharbor-web:verify .
+az bicep build --file infra/bicep/main.bicep
+```
+
+See [local development](docs/development/local-development.md) and [reproducible build instructions](docs/development/reproducible-builds.md).
 
 ## API
 
@@ -103,6 +116,10 @@ Production configuration uses HTTPS OIDC metadata and validates issuer, audience
 ## Contributing and security
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md), [AGENTS.md](AGENTS.md), and [SECURITY.md](SECURITY.md). Never include real case data, credentials, or access tokens in issues, fixtures, logs, or commits.
+
+## Supported v0.1 scope
+
+v0.1 supports only the fictional-data learning slice listed under Current status, run locally or in CI. It does not support production deployment, real personal data, file handling, privacy lifecycle workflows, role administration, backup/restore operations, or an operational service-level commitment. See the [v0.1 release notes](docs/releases/v0.1.0.md) for the exact boundary.
 
 ## License
 

@@ -5,12 +5,14 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="Testcontainers.PostgreSql" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\src\MatterHarbor.Api\MatterHarbor.Api.csproj" />
     <ProjectReference Include="..\..\src\MatterHarbor.Application\MatterHarbor.Application.csproj" />
     <ProjectReference Include="..\..\src\MatterHarbor.Infrastructure\MatterHarbor.Infrastructure.csproj" />
   </ItemGroup>
