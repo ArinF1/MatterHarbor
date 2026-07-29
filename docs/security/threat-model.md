@@ -16,6 +16,7 @@ This initial model covers identities, organization boundaries, case records, aud
 | Lost or duplicate async work | Same-transaction outbox, conditional lease claims, expired-lease recovery | Dead-letter policy, backoff, idempotent consumers, Service Bus contract tests |
 | Sensitive log disclosure | No request bodies, tokens, descriptions, titles, or payloads are logged; stable IDs/error codes only | Automated log redaction tests and production telemetry review |
 | Denial of service | Bounded lists, conservative fixed-window rate limit, input length limits | Per-route policies, distributed counters, load tests, request size limits |
+| Uncontrolled schema change | API startup migrates and seeds only in Development; CI applies a checksummed bundle over fictional existing data and proves its runtime test role cannot create schema objects | Restricted production migration/runtime DB roles, serialized deployment integration, broader compatibility tests, exercised backup/restore |
 | Malicious file upload (planned) | No file upload exists | Quarantine container, content validation, malware scan, safe names, access-controlled download |
 | Personal-data over-retention | No real data is permitted in this early project | Classification, retention jobs, export, anonymization, legal-hold policy |
 | Supply-chain compromise | Lockfiles, central versions, CI vulnerability checks, least-privilege workflow token | Dependabot/Renovate, provenance and signed release process |

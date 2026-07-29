@@ -45,3 +45,14 @@ az bicep build --file infra/bicep/main.bicep
 ```
 
 To record local artifact identities, use `docker image inspect` for image IDs and `sha256sum` (or PowerShell `Get-FileHash -Algorithm SHA256`) for files. No prebuilt binaries or production deployment are published for v0.1.0.
+
+## Current migration artifact
+
+Migration bundles were added after v0.1.0 and are not part of that tag. From a clean Linux x64 checkout of the desired source commit using the SDK selected by `global.json`, build an equivalent self-contained artifact:
+
+```powershell
+dotnet restore MatterHarbor.sln --locked-mode
+./scripts/build-migration-bundle.ps1 -SourceVersion <source-commit>
+```
+
+The versioned directory under `artifacts/migrations` contains the executable, its source identity, the exact SDK/tool metadata, the platform-resolved NuGet lock graphs, and checksums for all of them. The script first resolves the platform graph, then builds the executable in locked mode and fails if that graph drifts. CI verifies the checksums, applies the bundle over fictional v0.1 data in PostgreSQL 17, confirms the migration head and preserved row, proves the runtime role cannot create schema objects, and boots the API in Production mode with that restricted role. See the [controlled migration runbook](../operations/database-migrations.md) before applying it anywhere else.
