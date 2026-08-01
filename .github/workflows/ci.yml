@@ -176,7 +176,7 @@ jobs:
           Messaging__Transport: Local
         run: |
           dotnet build src/MatterHarbor.Api/MatterHarbor.Api.csproj --configuration Release --no-restore
-          dotnet run --project src/MatterHarbor.Api --configuration Release --no-build > api.log 2>&1 &
+          dotnet run --no-launch-profile --project src/MatterHarbor.Api --configuration Release --no-build > api.log 2>&1 &
           api_pid=$!
           trap 'kill "$api_pid" 2>/dev/null || true' EXIT
           for attempt in {1..30}; do
