@@ -8,6 +8,8 @@ MatterHarbor helps municipalities, housing companies, and enterprise teams recor
 
 The v0.1 slice supports seeded development organizations/users, development persona authentication, case creation/list/details/status changes, assignment on creation when the user belongs to the organization, idempotency, optimistic concurrency with accessible conflict recovery, immutable creation audit records, transactional outbox records, worker processing, health endpoints, and telemetry. It is limited to fictional local and CI data and is not production-ready. See README for the exact boundary.
 
+Current v1.0 groundwork removes production startup migration privileges and produces a versioned migration bundle that CI checksums, applies to disposable PostgreSQL, and smoke-tests with the API in Production mode. No shared or production environment is deployed.
+
 ## Planned capabilities
 
 The following are requirements, not implemented claims:

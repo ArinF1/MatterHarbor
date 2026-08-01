@@ -56,6 +56,143 @@ jobs:
       - name: Validate Bicep syntax
         run: az bicep build --file infra/bicep/main.bicep
 
+  migration-bundle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: matterharbor
+          POSTGRES_USER: matterharbor
+          POSTGRES_PASSWORD: matterharbor_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U matterharbor -d matterharbor"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      MIGRATION_CONNECTION_STRING: Host=127.0.0.1;Port=5432;Database=matterharbor;Username=matterharbor;Password=matterharbor_ci
+      RUNTIME_CONNECTION_STRING: Host=127.0.0.1;Port=5432;Database=matterharbor;Username=matterharbor_api_runtime;Password=matterharbor_runtime_ci
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: '**/packages.lock.json'
+      - run: dotnet restore MatterHarbor.sln --locked-mode
+      - name: Build versioned migration bundle
+        shell: pwsh
+        run: ./scripts/build-migration-bundle.ps1 -SourceVersion $env:GITHUB_SHA
+      - name: Verify and apply migration bundle
+        run: |
+          cd "artifacts/migrations/$GITHUB_SHA"
+          sha256sum --check SHA256SUMS
+          test "$(cat SOURCE_COMMIT)" = "$GITHUB_SHA"
+          jq --exit-status '
+            .sourceVersion == env.GITHUB_SHA and
+            .runtimeIdentifier == "linux-x64" and
+            .selfContained == true
+          ' BUILD_INFO.json > /dev/null
+          chmod 0755 matterharbor-migrate
+          mapfile -t migrations < <(
+            find ../../../src/MatterHarbor.Infrastructure/Persistence/Migrations \
+              -maxdepth 1 -name '[0-9]*_*.cs' ! -name '*.Designer.cs' -printf '%f\n' |
+              sort
+          )
+          test "${#migrations[@]}" -gt 0
+          latest_index=$((${#migrations[@]} - 1))
+          latest="${migrations[$latest_index]%.cs}"
+          if test "${#migrations[@]}" -gt 1; then
+            baseline_index=$((${#migrations[@]} - 2))
+            baseline="${migrations[$baseline_index]%.cs}"
+          else
+            baseline="$latest"
+          fi
+          ./matterharbor-migrate "$baseline" --connection "$MIGRATION_CONNECTION_STRING" --no-color
+          docker exec --interactive "${{ job.services.postgres.id }}" \
+            psql -v ON_ERROR_STOP=1 -U matterharbor -d matterharbor \
+            < ../../../tests/MatterHarbor.IntegrationTests/Fixtures/v0.1-existing-data.sql
+          ./matterharbor-migrate --connection "$MIGRATION_CONNECTION_STRING" --no-color
+          actual="$(docker exec "${{ job.services.postgres.id }}" psql -U matterharbor -d matterharbor -tAc 'SELECT "MigrationId" FROM matterharbor."__EFMigrationsHistory" ORDER BY "MigrationId" DESC LIMIT 1;')"
+          test "$actual" = "$latest"
+          preserved="$(docker exec "${{ job.services.postgres.id }}" psql -U matterharbor -d matterharbor -tAc "SELECT count(*) FROM matterharbor.cases WHERE \"Id\" = '33333333-3333-3333-3333-333333333333';")"
+          test "$preserved" = "1"
+      - name: Provision and verify restricted runtime database role
+        run: |
+          docker exec --interactive "${{ job.services.postgres.id }}" \
+            psql -v ON_ERROR_STOP=1 -U matterharbor -d matterharbor <<'SQL'
+          CREATE ROLE matterharbor_api_runtime
+            LOGIN PASSWORD 'matterharbor_runtime_ci'
+            NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT;
+          REVOKE CREATE ON DATABASE matterharbor FROM PUBLIC;
+          REVOKE CREATE ON SCHEMA public FROM PUBLIC;
+          REVOKE CREATE ON SCHEMA matterharbor FROM PUBLIC;
+          GRANT CONNECT ON DATABASE matterharbor TO matterharbor_api_runtime;
+          GRANT USAGE ON SCHEMA matterharbor TO matterharbor_api_runtime;
+          GRANT SELECT
+            ON matterharbor.organizations,
+               matterharbor.organization_users,
+               matterharbor.cases,
+               matterharbor.idempotency_records
+            TO matterharbor_api_runtime;
+          GRANT INSERT
+            ON matterharbor.cases,
+               matterharbor.audit_entries,
+               matterharbor.idempotency_records,
+               matterharbor.outbox_messages
+            TO matterharbor_api_runtime;
+          GRANT UPDATE
+            ON matterharbor.cases
+            TO matterharbor_api_runtime;
+          SQL
+          runtime_rows="$(
+            docker exec --env PGPASSWORD=matterharbor_runtime_ci \
+              "${{ job.services.postgres.id }}" \
+              psql -h 127.0.0.1 -U matterharbor_api_runtime -d matterharbor \
+              -tAc 'SELECT count(*) FROM matterharbor.cases;'
+          )"
+          test "$runtime_rows" = "1"
+          if docker exec --env PGPASSWORD=matterharbor_runtime_ci \
+            "${{ job.services.postgres.id }}" \
+            psql -v ON_ERROR_STOP=1 -h 127.0.0.1 \
+              -U matterharbor_api_runtime -d matterharbor \
+              -c 'CREATE TABLE matterharbor.runtime_must_not_create (id integer);'
+          then
+            echo "Runtime role unexpectedly created a table."
+            exit 1
+          fi
+      - name: Smoke-test production startup against migrated schema
+        env:
+          ASPNETCORE_ENVIRONMENT: Production
+          ASPNETCORE_URLS: http://127.0.0.1:5080
+          ConnectionStrings__MatterHarbor: ${{ env.RUNTIME_CONNECTION_STRING }}
+          Authentication__Mode: Oidc
+          Authentication__Oidc__Authority: https://identity.example.invalid
+          Authentication__Oidc__Audience: matterharbor-ci
+          Messaging__Transport: Local
+        run: |
+          dotnet build src/MatterHarbor.Api/MatterHarbor.Api.csproj --configuration Release --no-restore
+          dotnet run --project src/MatterHarbor.Api --configuration Release --no-build > api.log 2>&1 &
+          api_pid=$!
+          trap 'kill "$api_pid" 2>/dev/null || true' EXIT
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:5080/health/ready > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat api.log
+          exit 1
+      - uses: actions/upload-artifact@v7
+        with:
+          name: matterharbor-migrations-${{ github.sha }}
+          path: artifacts/migrations/${{ github.sha }}
+          if-no-files-found: error
+
   end-to-end:
     runs-on: ubuntu-latest
     timeout-minutes: 30

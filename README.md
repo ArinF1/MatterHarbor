@@ -18,6 +18,7 @@ The repository currently implements one small vertical slice:
 - liveness/readiness endpoints, rate limiting, problem details, security headers, and OpenTelemetry;
 - React persona selection, case list, creation form, and details screen;
 - unit, architecture, hosted HTTP/PostgreSQL integration, frontend interaction, and live Playwright tests;
+- Development-only startup migrations plus a versioned, checksummed migration bundle that CI applies to disposable PostgreSQL;
 - local Compose dependencies, container definitions, CI, and un-deployed Bicep infrastructure.
 
 Azure deployment, file uploads and malware scanning, GDPR workflows, search, assignment workflows, dashboards, backups, and operational hardening are planned, not implemented.
@@ -89,6 +90,7 @@ On PowerShell 7, `./scripts/test.ps1` performs the same workflow and handles Win
 ```bash
 dotnet list MatterHarbor.sln package --vulnerable --include-transitive
 npm --prefix src/MatterHarbor.Web audit --audit-level=high
+pwsh ./scripts/build-migration-bundle.ps1 -SourceVersion local-verify
 docker compose config --quiet
 docker compose --file compose.e2e.yaml config --quiet
 docker build --file src/MatterHarbor.Api/Dockerfile --tag matterharbor-api:verify .
@@ -98,6 +100,8 @@ az bicep build --file infra/bicep/main.bicep
 ```
 
 See [local development](docs/development/local-development.md) and [reproducible build instructions](docs/development/reproducible-builds.md).
+
+The API never applies migrations outside `Development`. Shared environments must use the CI-built artifact and the [controlled migration runbook](docs/operations/database-migrations.md); runtime identities must not have schema-altering permissions.
 
 ## API
 

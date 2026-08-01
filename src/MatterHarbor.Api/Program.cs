@@ -237,7 +237,11 @@ cases.MapPut("/{caseId:guid}/status", async (
     return Results.Ok(result);
 });
 
-await app.Services.InitializeMatterHarborDatabaseAsync(app.Environment.IsDevelopment());
+if (app.Environment.IsDevelopment())
+{
+    await app.Services.InitializeDevelopmentMatterHarborDatabaseAsync();
+}
+
 await app.RunAsync();
 
 #pragma warning disable CA1050 // WebApplicationFactory discovers the generated top-level Program type.

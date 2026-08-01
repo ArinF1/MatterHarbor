@@ -11,19 +11,13 @@ public static class DatabaseInitialization
     public static readonly Guid AlexUserId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
     public static readonly Guid CaseyUserId = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
 
-    public static async Task InitializeMatterHarborDatabaseAsync(
+    public static async Task InitializeDevelopmentMatterHarborDatabaseAsync(
         this IServiceProvider services,
-        bool seedDevelopmentData,
         CancellationToken cancellationToken = default)
     {
         await using var scope = services.CreateAsyncScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<MatterHarborDbContext>();
         await dbContext.Database.MigrateAsync(cancellationToken);
-
-        if (!seedDevelopmentData)
-        {
-            return;
-        }
 
         if (!await dbContext.Organizations.AnyAsync(x => x.Id == NorthwindOrganizationId, cancellationToken))
         {

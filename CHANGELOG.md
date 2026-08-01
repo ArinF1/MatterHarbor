@@ -4,6 +4,19 @@ All notable changes will be documented here. The format follows Keep a Changelog
 
 ## [Unreleased]
 
+### Added
+
+- Added a versioned, checksummed EF Core migration bundle that CI applies over fictional v0.1 rows, verifies for data preservation, and smoke-tests through a schema-restricted production-mode API identity.
+- Added a controlled migration runbook covering backup preflight, serialized execution, verification, and forward-fix failure handling.
+
+### Changed
+
+- Restricted automatic PostgreSQL migration and fictional seed data to Development; production startup no longer owns schema changes.
+
+### Fixed
+
+- Made the local E2E script honor the existing web, API, and PostgreSQL host-port overrides.
+
 ## [0.1.0] - 2026-07-27
 
 ### Added
