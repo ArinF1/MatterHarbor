@@ -8,6 +8,7 @@
 - Integration tests host the real API pipeline against Testcontainers PostgreSQL and cover authentication, tenant isolation, RFC-style problem responses, rate limiting, idempotency, transactions, audit/outbox persistence, concurrency, and outbox claiming.
 - Vitest + Testing Library exercises the React case-creation flow and headers.
 - Playwright runs without a skip against disposable API, worker, web, and PostgreSQL containers and confirms the worker processes the created outbox record.
+- CI builds and checksums the migration bundle, applies it over a fictional v0.1 compatibility fixture, verifies the migration head and preserved row, rejects schema creation by the runtime role, and requires Production-mode API readiness with that role.
 
 Run:
 
@@ -18,5 +19,7 @@ pwsh ./scripts/test-e2e.ps1
 ```
 
 Integration tests use Testcontainers by default and require Docker. A controlled CI or developer environment may set `MATTERHARBOR_TEST_CONNECTION_STRING` to an isolated disposable PostgreSQL database; never point it at shared or production data. The browser script installs Chromium, starts the disposable stack, supplies the two required test environment variables, and always tears the stack down.
+
+If a default host port is occupied, set `MATTERHARBOR_E2E_WEB_PORT`, `MATTERHARBOR_E2E_API_PORT`, or `MATTERHARBOR_E2E_POSTGRES_PORT` before running `scripts/test-e2e.ps1`; the script carries those values through Compose, readiness checks, and Playwright.
 
 The local transport verifies worker claim behavior and handler integration only. It does not prove Azure Service Bus locks, retries, identity, or network behavior; those need Azure SDK contract tests against an approved test environment.

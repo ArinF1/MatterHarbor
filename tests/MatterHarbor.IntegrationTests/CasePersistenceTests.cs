@@ -156,8 +156,8 @@ public sealed class CasePersistenceTests(PostgreSqlFixture fixture) : IClassFixt
             npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "matterharbor")));
         await using var provider = services.BuildServiceProvider();
 
-        await provider.InitializeMatterHarborDatabaseAsync(true);
-        await provider.InitializeMatterHarborDatabaseAsync(true);
+        await provider.InitializeDevelopmentMatterHarborDatabaseAsync();
+        await provider.InitializeDevelopmentMatterHarborDatabaseAsync();
 
         await using var context = fixture.CreateContext();
         Assert.Equal(1, await context.Organizations.CountAsync(

@@ -35,8 +35,15 @@ function Wait-ForHttp {
 $configuration = 'Release'
 $testProject = 'tests/MatterHarbor.EndToEndTests/MatterHarbor.EndToEndTests.csproj'
 $playwrightScript = "tests/MatterHarbor.EndToEndTests/bin/$configuration/net10.0/playwright.ps1"
+$postgresPort = if ($env:MATTERHARBOR_E2E_POSTGRES_PORT) { $env:MATTERHARBOR_E2E_POSTGRES_PORT } else { '5433' }
+$apiPort = if ($env:MATTERHARBOR_E2E_API_PORT) { $env:MATTERHARBOR_E2E_API_PORT } else { '5080' }
+$webPort = if ($env:MATTERHARBOR_E2E_WEB_PORT) { $env:MATTERHARBOR_E2E_WEB_PORT } else { '5173' }
+$apiBaseUrl = "http://127.0.0.1:$apiPort"
+$webBaseUrl = "http://127.0.0.1:$webPort"
 
 try {
+    $env:MATTERHARBOR_E2E_API_BASE_URL = $apiBaseUrl
+    $env:MATTERHARBOR_E2E_WEB_ORIGIN = $webBaseUrl
     Invoke-Checked 'dotnet' @('restore', $testProject, '--locked-mode')
     Invoke-Checked 'dotnet' @('build', $testProject, '--configuration', $configuration, '--no-restore')
     & $playwrightScript install chromium
@@ -44,10 +51,10 @@ try {
         throw "Playwright browser installation failed with exit code $LASTEXITCODE."
     }
     Invoke-Checked 'docker' @('compose', '--file', 'compose.e2e.yaml', 'up', '--build', '--detach', '--wait')
-    Wait-ForHttp 'http://127.0.0.1:5080/health/ready'
-    Wait-ForHttp 'http://127.0.0.1:5173/'
-    $env:MATTERHARBOR_E2E_BASE_URL = 'http://127.0.0.1:5173'
-    $env:MATTERHARBOR_E2E_CONNECTION_STRING = 'Host=127.0.0.1;Port=5433;Database=matterharbor;Username=matterharbor;Password=matterharbor_e2e'
+    Wait-ForHttp "$apiBaseUrl/health/ready"
+    Wait-ForHttp "$webBaseUrl/"
+    $env:MATTERHARBOR_E2E_BASE_URL = $webBaseUrl
+    $env:MATTERHARBOR_E2E_CONNECTION_STRING = "Host=127.0.0.1;Port=$postgresPort;Database=matterharbor;Username=matterharbor;Password=matterharbor_e2e"
     Invoke-Checked 'dotnet' @('test', $testProject, '--configuration', $configuration, '--no-build')
 }
 finally {

@@ -25,7 +25,7 @@ dotnet run --project src/MatterHarbor.Worker
 npm --prefix src/MatterHarbor.Web run dev
 ```
 
-The API applies `InitialCreate` and seeds two fictional tenants only in Development. Select Alex/Northwind or Casey/Contoso in the web app. Data persists in the `matterharbor-postgres` Docker volume. Stop dependencies with `docker compose down`; add `--volumes` only when intentionally deleting local data.
+The API applies `InitialCreate` and seeds two fictional tenants only in Development. It never migrates in other environments. Select Alex/Northwind or Casey/Contoso in the web app. Data persists in the `matterharbor-postgres` Docker volume. Stop dependencies with `docker compose down`; add `--volumes` only when intentionally deleting local data.
 
 ## Local services
 
@@ -48,3 +48,5 @@ dotnet tool run dotnet-ef database update --project src/MatterHarbor.Infrastruct
 ```
 
 Review generated SQL and apply the migration to local PostgreSQL before committing.
+
+Shared environments use the versioned CI artifact, not `database update` or application startup. Follow the [controlled migration runbook](../operations/database-migrations.md).
