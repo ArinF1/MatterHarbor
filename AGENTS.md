@@ -21,6 +21,7 @@ MatterHarbor is an early-stage portfolio and learning project. Keep documentatio
 - Do not log tokens, secrets, case titles, descriptions, outbox payloads, or request bodies.
 - Case, audit, idempotency, and outbox writes for creation remain in one PostgreSQL transaction.
 - New list endpoints must be bounded. New writes need concurrency and retry semantics.
+- The API may migrate and seed only in Development. Other environments use the reviewed, checksummed migration bundle through a serialized deployment step.
 
 ## Verification
 

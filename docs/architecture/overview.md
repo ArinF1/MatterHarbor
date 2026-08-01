@@ -50,4 +50,4 @@ Hosted integration tests execute the real HTTP middleware and endpoints against 
 
 ## Trade-offs
 
-The application uses an explicit `ICaseStore` port instead of a generic repository. PostgreSQL advisory locks serialize same-key retries without a distributed cache. Read models currently use domain entities because the slice is small; dedicated projections can be introduced when queries diverge. Database migrations run automatically only at Development API startup; controlled deployment migrations remain future work.
+The application uses an explicit `ICaseStore` port instead of a generic repository. PostgreSQL advisory locks serialize same-key retries without a distributed cache. Read models currently use domain entities because the slice is small; dedicated projections can be introduced when queries diverge. Database migration and fictional seeding run automatically only at Development API startup. CI builds and applies a checksummed migration bundle; integrating that artifact with restricted identities, approval gates, and backup/restore remains deployment work.

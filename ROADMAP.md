@@ -4,7 +4,7 @@ MatterHarbor is not production-ready. Priorities are ordered by risk reduction a
 
 ## Now — harden the first slice
 
-- Add production migration bundles/runbooks; stop relying on Development startup migration outside local use.
+- Integrate the CI-tested migration bundle into an approved deployment pipeline with a restricted migration identity and exercised backup/restore. Production startup no longer applies schema changes.
 - Add roles and explicit case transition/assignment policies with complete audit coverage.
 - Add outbox retry backoff, dead-letter operations, retention, metrics, and Azure Service Bus contract tests.
 

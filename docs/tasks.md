@@ -17,11 +17,17 @@
 - [x] Accessible loading, retryable error, and concurrency-conflict web states
 - [x] v0.1 scope, release notes, dependency locks, reproducible build instructions, and private vulnerability reporting
 
+## Completed v1.0 groundwork
+
+- [x] Restrict startup migration and fictional seeding to Development
+- [x] Build, checksum, apply over fictional v0.1 data, verify preservation and runtime-role restrictions, and smoke-test the versioned EF migration bundle in CI
+- [x] Document controlled single-run migration, backup preflight, verification, and failure handling
+
 ## Highest-priority next tasks
 
 1. Implement roles, assignment rules, allowed state transitions, ETag/If-Match, and audit every case mutation.
 2. Operationalize outbox retries, dead-letter handling, retention, metrics, and Azure Service Bus contract tests.
-3. Build controlled migration/deployment and backup/restore runbooks before any shared environment.
+3. Add an approved deployment pipeline, restricted migration/runtime database identities, and an exercised backup/restore runbook before any shared environment.
 
 ## Deferred product work
 
