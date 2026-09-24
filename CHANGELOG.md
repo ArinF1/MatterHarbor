@@ -4,14 +4,19 @@ All notable changes will be documented here. The format follows Keep a Changelog
 
 ## [Unreleased]
 
+### Changed
+
+- Enforced case status transitions, made Closed terminal with a resolved-case reopen path, and atomically audited each status change.
+- Grouped Dependabot minor and patch updates by ecosystem so routine upgrades arrive in fewer pull requests; major upgrades remain separate.
+- Updated Testcontainers.PostgreSql to 4.15.0 so its transitive SSH.NET dependency resolves to the patched 2026.0.0 release.
+- Updated the frontend lockfile and Vitest to resolve all six advisories reported by the npm audit.
+- Applied compatible pending Dependabot updates; deferred jsdom and TypeScript majors because current Node and lint-parser versions do not support them.
+- Restricted automatic PostgreSQL migration and fictional seed data to Development; production startup no longer owns schema changes.
+
 ### Added
 
 - Added a versioned, checksummed EF Core migration bundle that CI applies over fictional v0.1 rows, verifies for data preservation, and smoke-tests through a schema-restricted production-mode API identity.
 - Added a controlled migration runbook covering backup preflight, serialized execution, verification, and forward-fix failure handling.
-
-### Changed
-
-- Restricted automatic PostgreSQL migration and fictional seed data to Development; production startup no longer owns schema changes.
 
 ### Fixed
 

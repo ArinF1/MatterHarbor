@@ -98,6 +98,18 @@ public sealed class CaseItem
             throw new ConcurrencyConflictException();
         }
 
+        var canTransition = (Status, status) switch
+        {
+            (CaseStatus.New, CaseStatus.InProgress) => true,
+            (CaseStatus.InProgress, CaseStatus.Resolved) => true,
+            (CaseStatus.Resolved, CaseStatus.InProgress or CaseStatus.Closed) => true,
+            _ => false
+        };
+        if (!canTransition)
+        {
+            throw new DomainValidationException($"A case cannot move from {Status} to {status}.");
+        }
+
         Status = status;
         UpdatedAt = now;
     }

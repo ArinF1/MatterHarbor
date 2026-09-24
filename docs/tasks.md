@@ -15,7 +15,12 @@
 - [x] Hosted HTTP tests for authentication, tenant isolation, problem details, rate limiting, and idempotency replay
 - [x] Unskipped full-stack Playwright CI with worker outbox verification
 - [x] Accessible loading, retryable error, and concurrency-conflict web states
+- [x] Enforce the case status lifecycle, make Closed terminal, allow resolved cases to reopen, and audit each status change atomically
 - [x] v0.1 scope, release notes, dependency locks, reproducible build instructions, and private vulnerability reporting
+- [x] Group routine Dependabot minor and patch updates by ecosystem while keeping major upgrades separate
+- [x] Apply compatible pending Dependabot updates and hold jsdom/TypeScript majors until the toolchain supports them
+- [x] Update Testcontainers to resolve its transitive SSH.NET security advisories
+- [x] Resolve frontend dependency advisories reported by npm audit
 
 ## Completed v1.0 groundwork
 
@@ -25,7 +30,7 @@
 
 ## Highest-priority next tasks
 
-1. Implement roles, assignment rules, allowed state transitions, ETag/If-Match, and audit every case mutation.
+1. Add roles, role-aware assignment rules, ETag/If-Match, and audit coverage for remaining case mutations.
 2. Operationalize outbox retries, dead-letter handling, retention, metrics, and Azure Service Bus contract tests.
 3. Add an approved deployment pipeline, restricted migration/runtime database identities, and an exercised backup/restore runbook before any shared environment.
 
@@ -37,3 +42,7 @@
 - [ ] Quarantined file upload and malware scanning
 - [ ] Personal-data export, anonymization/deletion, and retention
 - [ ] Dashboards, alerts, SLOs, performance tests, and disaster recovery
+
+## Deferred repository maintenance
+
+- [ ] Re-enable jsdom and TypeScript major updates after upgrading the pinned Node runtime and TypeScript ESLint peer support

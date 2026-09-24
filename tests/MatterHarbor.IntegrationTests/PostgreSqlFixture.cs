@@ -17,8 +17,7 @@ public sealed class PostgreSqlFixture : IAsyncLifetime
         var externalConnection = Environment.GetEnvironmentVariable("MATTERHARBOR_TEST_CONNECTION_STRING");
         if (string.IsNullOrWhiteSpace(externalConnection))
         {
-            container = new PostgreSqlBuilder()
-                .WithImage("postgres:17-alpine")
+            container = new PostgreSqlBuilder("postgres:17-alpine")
                 .WithDatabase("matterharbor_tests")
                 .WithUsername("matterharbor")
                 .WithPassword("test_password")

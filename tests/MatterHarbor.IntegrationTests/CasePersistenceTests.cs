@@ -49,6 +49,31 @@ public sealed class CasePersistenceTests(PostgreSqlFixture fixture) : IClassFixt
     }
 
     [Fact]
+    public async Task Status_change_appends_actor_and_transition_to_audit()
+    {
+        var tenant = await fixture.AddTenantAsync();
+        await using var context = fixture.CreateContext();
+        var user = new UserContext(tenant.UserId, tenant.OrganizationId);
+        var created = await CreateService(context).ExecuteAsync(
+            user,
+            "status-audit-key",
+            ValidCommand(),
+            CancellationToken.None);
+        var changed = await new ChangeCaseStatusService(new CaseStore(context), new FixedClock(Now.AddMinutes(1)))
+            .ExecuteAsync(
+                user,
+                created.Case.Id,
+                new ChangeCaseStatusCommand(CaseStatus.InProgress, created.Case.Version),
+                CancellationToken.None);
+        var audit = await context.AuditEntries.SingleAsync(x => x.EntityId == changed.Id && x.Action != "case.created");
+
+        Assert.Equal(tenant.OrganizationId, audit.OrganizationId);
+        Assert.Equal(tenant.UserId, audit.ActorUserId);
+        Assert.Equal("case.status.changed:New->InProgress", audit.Action);
+        Assert.Equal(CaseStatus.InProgress, changed.Status);
+    }
+
+    [Fact]
     public async Task Reusing_key_with_different_input_returns_conflict()
     {
         var tenant = await fixture.AddTenantAsync();
@@ -96,6 +121,9 @@ public sealed class CasePersistenceTests(PostgreSqlFixture fixture) : IClassFixt
                 ValidCommand(),
                 CancellationToken.None);
             caseId = created.Case.Id;
+            var item = await createContext.Cases.SingleAsync(x => x.Id == caseId);
+            item.ChangeStatus(CaseStatus.InProgress, item.Version, Now);
+            await createContext.SaveChangesAsync();
         }
 
         await using var firstContext = fixture.CreateContext();
@@ -107,9 +135,9 @@ public sealed class CasePersistenceTests(PostgreSqlFixture fixture) : IClassFixt
         Assert.NotNull(first);
         Assert.NotNull(second);
 
-        first.ChangeStatus(CaseStatus.InProgress, 1, Now.AddMinutes(1));
+        first.ChangeStatus(CaseStatus.Resolved, 2, Now.AddMinutes(1));
         await firstStore.SaveChangesAsync(CancellationToken.None);
-        second.ChangeStatus(CaseStatus.Resolved, 1, Now.AddMinutes(2));
+        second.ChangeStatus(CaseStatus.Resolved, 2, Now.AddMinutes(2));
 
         await Assert.ThrowsAsync<ConcurrencyConflictException>(() =>
             secondStore.SaveChangesAsync(CancellationToken.None));

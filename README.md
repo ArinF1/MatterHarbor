@@ -9,10 +9,10 @@ MatterHarbor is not production-ready. Do not use it with real personal data.
 The repository currently implements one small vertical slice:
 
 - development-only persona authentication and generic production OIDC bearer configuration;
-- organization-scoped case list, case details, case creation, and status updates;
+- organization-scoped case list, details, creation, and status updates with enforced transitions (New → InProgress → Resolved → Closed; resolved cases can reopen to InProgress, and closed cases are terminal);
 - required idempotency keys, replay, and conflicting-payload detection;
 - integer optimistic concurrency;
-- same-transaction case, immutable audit, idempotency, and outbox persistence;
+- atomic case and status-audit persistence; creation also commits immutable audit, idempotency, and outbox records together;
 - a leased outbox worker with local structured notification logging and an Azure Service Bus adapter;
 - PostgreSQL migrations and development seed personas;
 - liveness/readiness endpoints, rate limiting, problem details, security headers, and OpenTelemetry;

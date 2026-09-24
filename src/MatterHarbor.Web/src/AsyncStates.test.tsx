@@ -54,7 +54,8 @@ test('explains a concurrency conflict and reloads the latest case', async () => 
   render(<Router hook={hook}><AppRoutes /></Router>)
 
   expect(await screen.findByRole('heading', { name: caseItem.title })).toBeVisible()
-  await user.selectOptions(screen.getByLabelText('Status'), 'Resolved')
+  expect(screen.queryByRole('option', { name: 'Resolved' })).not.toBeInTheDocument()
+  await user.selectOptions(screen.getByLabelText('Status'), 'InProgress')
   await user.click(screen.getByRole('button', { name: 'Update status' }))
   expect(await screen.findByRole('alert')).toHaveTextContent('changed while you were editing')
   await user.click(screen.getByRole('button', { name: 'Reload case' }))

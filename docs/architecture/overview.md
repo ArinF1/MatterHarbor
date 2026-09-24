@@ -42,6 +42,12 @@ flowchart TB
 6. EF Core writes all records and commits once.
 7. The worker conditionally claims pending/expired records with a lease, publishes through the configured adapter, and marks success. Crashed leases become claimable again.
 
+## Case status update flow
+
+1. The application loads the case using both the authenticated organization ID and case ID.
+2. The domain validates the requested transition and expected integer version. New cases move to InProgress, then Resolved, and then Closed; Resolved cases can reopen to InProgress, while Closed cases are terminal.
+3. The application appends an audit entry containing the actor, organization, case, timestamp, and status transition. One EF Core save writes the changed case and audit entry atomically; a stale database version rejects both.
+
 This design provides at-least-once processing. Consumers must remain idempotent; local logging does not prove Azure Service Bus semantics.
 
 ## Verification architecture

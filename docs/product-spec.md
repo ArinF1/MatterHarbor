@@ -6,7 +6,7 @@ MatterHarbor helps municipalities, housing companies, and enterprise teams recor
 
 ## Implemented scope
 
-The v0.1 slice supports seeded development organizations/users, development persona authentication, case creation/list/details/status changes, assignment on creation when the user belongs to the organization, idempotency, optimistic concurrency with accessible conflict recovery, immutable creation audit records, transactional outbox records, worker processing, health endpoints, and telemetry. It is limited to fictional local and CI data and is not production-ready. See README for the exact boundary.
+The v0.1 slice supports seeded development organizations/users, development persona authentication, case creation/list/details/status changes, assignment on creation when the user belongs to the organization, idempotency, optimistic concurrency with accessible conflict recovery, immutable creation audit records, transactional outbox records, worker processing, health endpoints, and telemetry. The current unreleased implementation also enforces a basic case status path (New → InProgress → Resolved → Closed, with resolved cases reopenable to InProgress) and appends an audit event for each status change. Closed is terminal. It remains limited to fictional local and CI data and is not production-ready. See README for the exact boundary.
 
 Current v1.0 groundwork removes production startup migration privileges and produces a versioned migration bundle that CI checksums, applies to disposable PostgreSQL, and smoke-tests with the API in Production mode. No shared or production environment is deployed.
 
@@ -15,8 +15,8 @@ Current v1.0 groundwork removes production startup migration privileges and prod
 The following are requirements, not implemented claims:
 
 - organization administration, user provisioning, and role-based permissions;
-- full case assignment and state-transition policies;
-- append-only audit history for every material change;
+- role-based case assignment and state-transition permissions;
+- append-only audit history for all material mutations beyond creation and status changes;
 - comments, internal notes, notifications, search, filters, and cursor pagination;
 - file uploads using Blob Storage, quarantine, malware scanning, and safe download;
 - command-wide idempotency and optimistic concurrency UX;
@@ -30,8 +30,9 @@ The following are requirements, not implemented claims:
 - A user belongs to an organization and cannot read or mutate another organization's records.
 - Organization identity comes from a verified authenticated claim.
 - A case has a generated UUID, organization-scoped readable number, title, description, priority, status, optional assignee, timestamps, and integer version.
+- Status changes follow New → InProgress → Resolved → Closed; Resolved may return to InProgress, and Closed cannot transition further.
 - Duplicate retries with the same idempotency key and normalized payload return the original result; changed payloads conflict.
-- History is append-only and records actor, organization, action, entity, and timestamp without duplicating sensitive case text.
+- History is append-only and records actor, organization, action, entity, and timestamp without duplicating sensitive case text. Creation and status changes are recorded.
 - Durable external messages originate from the transactional outbox.
 
 ## Non-functional goals
