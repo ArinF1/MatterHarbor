@@ -19,3 +19,4 @@ src/MatterHarbor.Web/vite.config.d.ts
 *.suo
 *.log
 artifacts/
+infra/bicep/main.json

@@ -1,6 +1,15 @@
 export type CasePriority = 'Low' | 'Normal' | 'High' | 'Critical'
 export type CaseStatus = 'New' | 'InProgress' | 'Resolved' | 'Closed'
 
+export function nextCaseStatuses(status: CaseStatus): CaseStatus[] {
+  switch (status) {
+    case 'New': return ['InProgress']
+    case 'InProgress': return ['Resolved']
+    case 'Resolved': return ['InProgress', 'Closed']
+    case 'Closed': return []
+  }
+}
+
 export interface CaseItem {
   id: string
   caseNumber: string

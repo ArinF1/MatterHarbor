@@ -7,7 +7,7 @@ import {
   useLocation,
   useParams,
 } from 'wouter'
-import { api, ApiError, CaseItem, CasePriority, CaseStatus } from './api'
+import { api, ApiError, CaseItem, CasePriority, CaseStatus, nextCaseStatuses } from './api'
 import { PersonaContext, personaOptions, usePersona } from './persona'
 
 function Layout({ children }: { children: ReactNode }) {
@@ -191,10 +191,12 @@ function CaseDetailsPage() {
       {conflict && <div className="conflict" role="alert"><p>This case changed while you were editing. Reload the latest version before trying again.</p><button type="button" onClick={() => setReloadToken((value) => value + 1)}>Reload case</button></div>}
       <form className="status-form" onSubmit={updateStatus} aria-busy={saving}>
         <label>Status<select value={nextStatus} onChange={(event) => setNextStatus(event.target.value as CaseStatus)}>
-          <option>New</option><option>InProgress</option><option>Resolved</option><option>Closed</option>
+          <option value={item.status}>{item.status}</option>
+          {nextCaseStatuses(item.status).map((status) => <option key={status} value={status}>{status}</option>)}
         </select></label>
         <button disabled={saving || nextStatus === item.status} type="submit">{saving ? 'Updating…' : 'Update status'}</button>
       </form>
+      {item.status === 'Closed' && <p className="status">This case is closed. No further status changes are available.</p>}
       <h2>Description</h2><p className="description">{item.description}</p>
     </article>
   )

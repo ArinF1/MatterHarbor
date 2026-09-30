@@ -12,7 +12,7 @@ This initial model covers identities, organization boundaries, case records, aud
 | IDOR through UUID | UUID alone never authorizes access | Continue scoped queries for all new entities |
 | Concurrent overwrite | Integer EF concurrency token, 409 response, and accessible reload-before-retry conflict UX | Add ETag/If-Match HTTP semantics |
 | Duplicate command | Required idempotency key, normalized SHA-256 payload hash, database key, advisory transaction lock | Expiry/retention policy and coverage for all writes |
-| Audit tampering | Application only appends; DbContext rejects update/delete; same transaction as case | Restricted DB role, hash chaining/WORM evaluation, broader event coverage |
+| Audit tampering | Application only appends; DbContext rejects update/delete; creation and status-change audit records commit with their case writes | Restricted DB role, hash chaining/WORM evaluation, audit coverage for remaining mutations |
 | Lost or duplicate async work | Same-transaction outbox, conditional lease claims, expired-lease recovery | Dead-letter policy, backoff, idempotent consumers, Service Bus contract tests |
 | Sensitive log disclosure | No request bodies, tokens, descriptions, titles, or payloads are logged; stable IDs/error codes only | Automated log redaction tests and production telemetry review |
 | Denial of service | Bounded lists, conservative fixed-window rate limit, input length limits | Per-route policies, distributed counters, load tests, request size limits |

@@ -3,6 +3,7 @@
 **/node_modules
 **/dist
 **/TestResults
+artifacts
 .git
 .vs
 .idea

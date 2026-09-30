@@ -9,10 +9,10 @@ MatterHarbor is not production-ready. Do not use it with real personal data.
 The repository currently implements one small vertical slice:
 
 - development-only persona authentication and generic production OIDC bearer configuration;
-- organization-scoped case list, case details, case creation, and status updates;
+- organization-scoped case list, details, creation, and status updates with enforced transitions (New → InProgress → Resolved → Closed; resolved cases can reopen to InProgress, and closed cases are terminal);
 - required idempotency keys, replay, and conflicting-payload detection;
 - integer optimistic concurrency;
-- same-transaction case, immutable audit, idempotency, and outbox persistence;
+- atomic case and status-audit persistence; creation also commits immutable audit, idempotency, and outbox records together;
 - a leased outbox worker with local structured notification logging and an Azure Service Bus adapter;
 - PostgreSQL migrations and development seed personas;
 - liveness/readiness endpoints, rate limiting, problem details, security headers, and OpenTelemetry;
@@ -44,7 +44,7 @@ The API is a modular monolith. The worker is a separate process because it has a
 ## Toolchain
 
 - .NET SDK 10.0.300 (pinned by `global.json`), .NET 10 projects
-- Node.js 22.13.0 or later in the Node 22 line
+- Node.js 22.22.2 or later in the Node 22 line
 - PostgreSQL 17
 - Docker 29+ with Docker Compose
 - npm dependencies pinned by `package-lock.json`
@@ -124,6 +124,8 @@ Read [CONTRIBUTING.md](CONTRIBUTING.md), [AGENTS.md](AGENTS.md), and [SECURITY.m
 ## Supported v0.1 scope
 
 v0.1 supports only the fictional-data learning slice listed under Current status, run locally or in CI. It does not support production deployment, real personal data, file handling, privacy lifecycle workflows, role administration, backup/restore operations, or an operational service-level commitment. See the [v0.1 release notes](docs/releases/v0.1.0.md) for the exact boundary.
+
+The [v1.0.0 release gates](docs/releases/v1.0.0-readiness.md) track the work required before the next release can be tagged.
 
 ## License
 
