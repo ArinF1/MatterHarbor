@@ -3,7 +3,7 @@
 ## Prerequisites
 
 - .NET SDK 10.0.300 (the repository's `global.json` allows later patches)
-- Node.js 22.13.0+ and npm 10+
+- Node.js 22.22.2+ in the Node 22 line and npm 10+
 - Docker and Docker Compose
 - PowerShell 7 or Make (optional)
 

@@ -18,7 +18,8 @@
 - [x] Enforce the case status lifecycle, make Closed terminal, allow resolved cases to reopen, and audit each status change atomically
 - [x] v0.1 scope, release notes, dependency locks, reproducible build instructions, and private vulnerability reporting
 - [x] Group routine Dependabot minor and patch updates by ecosystem while keeping major upgrades separate
-- [x] Apply compatible pending Dependabot updates and hold jsdom/TypeScript majors until the toolchain supports them
+- [x] Apply compatible pending Dependabot updates and hold TypeScript 7 until the lint parser supports it
+- [x] Upgrade the Node 22 baseline and jsdom 30 together
 - [x] Update Testcontainers to resolve its transitive SSH.NET security advisories
 - [x] Resolve frontend dependency advisories reported by npm audit
 
@@ -29,6 +30,8 @@
 - [x] Document controlled single-run migration, backup preflight, verification, and failure handling
 
 ## Highest-priority next tasks
+
+The [v1.0.0 release gates](releases/v1.0.0-readiness.md) are required before tagging the next release.
 
 1. Add roles, role-aware assignment rules, ETag/If-Match, and audit coverage for remaining case mutations.
 2. Operationalize outbox retries, dead-letter handling, retention, metrics, and Azure Service Bus contract tests.
@@ -45,4 +48,4 @@
 
 ## Deferred repository maintenance
 
-- [ ] Re-enable jsdom and TypeScript major updates after upgrading the pinned Node runtime and TypeScript ESLint peer support
+- [ ] Re-enable TypeScript major updates after TypeScript ESLint supports TypeScript 7

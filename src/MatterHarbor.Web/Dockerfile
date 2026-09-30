@@ -1,4 +1,4 @@
-FROM node:22.13-alpine AS build
+FROM node:22.22.2-alpine AS build
 WORKDIR /app
 COPY src/MatterHarbor.Web/package*.json ./
 RUN npm ci

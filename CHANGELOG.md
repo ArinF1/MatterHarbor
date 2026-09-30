@@ -10,7 +10,7 @@ All notable changes will be documented here. The format follows Keep a Changelog
 - Grouped Dependabot minor and patch updates by ecosystem so routine upgrades arrive in fewer pull requests; major upgrades remain separate.
 - Updated Testcontainers.PostgreSql to 4.15.0 so its transitive SSH.NET dependency resolves to the patched 2026.0.0 release.
 - Updated the frontend lockfile and Vitest to resolve all six advisories reported by the npm audit.
-- Applied compatible pending Dependabot updates; deferred jsdom and TypeScript majors because current Node and lint-parser versions do not support them.
+- Applied compatible pending Dependabot updates and upgraded the Node 22 patch baseline for jsdom 30; deferred TypeScript 7 until the lint parser supports it.
 - Restricted automatic PostgreSQL migration and fictional seed data to Development; production startup no longer owns schema changes.
 
 ### Added
@@ -21,6 +21,7 @@ All notable changes will be documented here. The format follows Keep a Changelog
 ### Fixed
 
 - Made the local E2E script honor the existing web, API, and PostgreSQL host-port overrides.
+- Pinned API and worker build images to the SDK selected by `global.json`, avoiding failures when the floating .NET 10 image advances to another feature band.
 
 ## [0.1.0] - 2026-07-27
 
