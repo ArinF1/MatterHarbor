@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using MatterHarbor.Application.Abstractions;
@@ -13,14 +14,23 @@ public sealed partial class OutboxProcessor(
     ILogger<OutboxProcessor> logger)
 {
     public const string ActivitySourceName = "MatterHarbor.Worker";
+    public const string MeterName = "MatterHarbor.Worker.Outbox";
+    public const int PurgeBatchSize = 1000;
     private static readonly ActivitySource ActivitySource = new(ActivitySourceName);
+    private static readonly Meter Meter = new(MeterName);
+    private static readonly Counter<long> Published = Meter.CreateCounter<long>("outbox.published");
+    private static readonly Counter<long> Retried = Meter.CreateCounter<long>("outbox.retried");
+    private static readonly Counter<long> DeadLettered = Meter.CreateCounter<long>("outbox.dead_lettered");
+    private static readonly Counter<long> Purged = Meter.CreateCounter<long>("outbox.purged");
+    private const int MaxAttempts = 10;
 
     public async Task<int> ProcessBatchAsync(int batchSize, CancellationToken cancellationToken)
     {
         var now = clock.UtcNow;
         var candidates = await dbContext.OutboxMessages
             .AsNoTracking()
-            .Where(x => x.Status == OutboxStatus.Pending ||
+            .Where(x => (x.Status == OutboxStatus.Pending &&
+                         (x.NextAttemptAt == null || x.NextAttemptAt <= now)) ||
                         (x.Status == OutboxStatus.Processing && x.LockedUntil < now))
             .OrderBy(x => x.OccurredAt)
             .Select(x => x.Id)
@@ -33,7 +43,8 @@ public sealed partial class OutboxProcessor(
             var lockId = Guid.NewGuid();
             var claimed = await dbContext.OutboxMessages
                 .Where(x => x.Id == messageId &&
-                            (x.Status == OutboxStatus.Pending ||
+                            ((x.Status == OutboxStatus.Pending &&
+                              (x.NextAttemptAt == null || x.NextAttemptAt <= now)) ||
                              (x.Status == OutboxStatus.Processing && x.LockedUntil < now)))
                 .ExecuteUpdateAsync(setters => setters
                     .SetProperty(x => x.Status, OutboxStatus.Processing)
@@ -48,6 +59,7 @@ public sealed partial class OutboxProcessor(
             }
 
             var message = await dbContext.OutboxMessages
+                .AsNoTracking()
                 .SingleAsync(x => x.Id == messageId && x.LockId == lockId, cancellationToken);
 
             using var activity = ActivitySource.StartActivity("outbox.process");
@@ -57,26 +69,74 @@ public sealed partial class OutboxProcessor(
             try
             {
                 await publisher.PublishAsync(message, cancellationToken);
-                message.Status = OutboxStatus.Processed;
-                message.ProcessedAt = clock.UtcNow;
-                message.LockId = null;
-                message.LockedUntil = null;
-                message.LastErrorCode = null;
-                await dbContext.SaveChangesAsync(cancellationToken);
-                processed++;
+                var completed = await dbContext.OutboxMessages
+                    .Where(x => x.Id == messageId && x.LockId == lockId && x.Status == OutboxStatus.Processing)
+                    .ExecuteUpdateAsync(setters => setters
+                        .SetProperty(x => x.Status, OutboxStatus.Processed)
+                        .SetProperty(x => x.ProcessedAt, clock.UtcNow)
+                        .SetProperty(x => x.LockId, (Guid?)null)
+                        .SetProperty(x => x.LockedUntil, (DateTimeOffset?)null)
+                        .SetProperty(x => x.LastErrorCode, (string?)null)
+                        .SetProperty(x => x.NextAttemptAt, (DateTimeOffset?)null),
+                        cancellationToken);
+                if (completed == 1)
+                {
+                    Published.Add(1);
+                    processed++;
+                }
             }
             catch (Exception exception) when (exception is not OperationCanceledException)
             {
-                message.Status = OutboxStatus.Pending;
-                message.LockId = null;
-                message.LockedUntil = null;
-                message.LastErrorCode = exception.GetType().Name;
-                await dbContext.SaveChangesAsync(cancellationToken);
-                LogPublishFailure(logger, message.Id, message.LastErrorCode);
+                var failedAt = clock.UtcNow;
+                var exhausted = message.AttemptCount >= MaxAttempts;
+                var status = exhausted ? OutboxStatus.DeadLetter : OutboxStatus.Pending;
+                var errorCode = exception.GetType().Name;
+                DateTimeOffset? nextAttemptAt = exhausted
+                    ? null
+                    : failedAt.AddSeconds(Math.Min(5 * (1 << Math.Min(message.AttemptCount - 1, 10)), 3600));
+                DateTimeOffset? deadLetteredAt = exhausted ? failedAt : null;
+                var failed = await dbContext.OutboxMessages
+                    .Where(x => x.Id == messageId && x.LockId == lockId && x.Status == OutboxStatus.Processing)
+                    .ExecuteUpdateAsync(setters => setters
+                        .SetProperty(x => x.Status, status)
+                        .SetProperty(x => x.LockId, (Guid?)null)
+                        .SetProperty(x => x.LockedUntil, (DateTimeOffset?)null)
+                        .SetProperty(x => x.LastErrorCode, errorCode)
+                        .SetProperty(x => x.NextAttemptAt, nextAttemptAt)
+                        .SetProperty(x => x.DeadLetteredAt, deadLetteredAt),
+                        cancellationToken);
+                if (failed == 0)
+                {
+                    continue;
+                }
+                if (exhausted)
+                {
+                    DeadLettered.Add(1);
+                }
+                else
+                {
+                    Retried.Add(1);
+                }
+                LogPublishFailure(logger, message.Id, errorCode);
             }
         }
 
         return processed;
+    }
+
+    public async Task<int> PurgeProcessedAsync(CancellationToken cancellationToken)
+    {
+        var cutoff = clock.UtcNow.AddDays(-30);
+        var ids = dbContext.OutboxMessages
+            .Where(x => x.Status == OutboxStatus.Processed && x.ProcessedAt < cutoff)
+            .OrderBy(x => x.ProcessedAt)
+            .Select(x => x.Id)
+            .Take(PurgeBatchSize);
+        var count = await dbContext.OutboxMessages
+            .Where(x => ids.Contains(x.Id))
+            .ExecuteDeleteAsync(cancellationToken);
+        Purged.Add(count);
+        return count;
     }
 
     [LoggerMessage(1002, LogLevel.Warning, "Outbox message {MessageId} failed with {ErrorCode}")]

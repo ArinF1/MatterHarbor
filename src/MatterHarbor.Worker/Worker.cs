@@ -9,6 +9,7 @@ public sealed partial class Worker(
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         LogStarted(logger);
+        var nextPurge = DateTimeOffset.MinValue;
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -18,6 +19,13 @@ public sealed partial class Worker(
             try
             {
                 var count = await processor.ProcessBatchAsync(20, stoppingToken);
+                if (DateTimeOffset.UtcNow >= nextPurge)
+                {
+                    var purged = await processor.PurgeProcessedAsync(stoppingToken);
+                    nextPurge = purged == OutboxProcessor.PurgeBatchSize
+                        ? DateTimeOffset.MinValue
+                        : DateTimeOffset.UtcNow.AddHours(1);
+                }
                 if (count == 0)
                 {
                     await Task.Delay(TimeSpan.FromSeconds(2), stoppingToken);

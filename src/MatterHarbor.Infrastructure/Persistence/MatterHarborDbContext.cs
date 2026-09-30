@@ -81,7 +81,7 @@ public sealed class MatterHarborDbContext(DbContextOptions<MatterHarborDbContext
             builder.Property(x => x.Payload).HasColumnType("jsonb");
             builder.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
             builder.Property(x => x.LastErrorCode).HasMaxLength(100);
-            builder.HasIndex(x => new { x.Status, x.LockedUntil, x.OccurredAt });
+            builder.HasIndex(x => new { x.Status, x.NextAttemptAt, x.LockedUntil, x.OccurredAt });
             builder.HasIndex(x => new { x.OrganizationId, x.OccurredAt });
         });
     }

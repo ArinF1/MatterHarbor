@@ -26,6 +26,7 @@ var telemetry = builder.Services.AddOpenTelemetry()
         .AddHttpClientInstrumentation()
         .AddSource("Npgsql"))
     .WithMetrics(metrics => metrics
+        .AddMeter(OutboxProcessor.MeterName)
         .AddHttpClientInstrumentation()
         .AddRuntimeInstrumentation());
 

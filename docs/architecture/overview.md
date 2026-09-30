@@ -40,7 +40,7 @@ flowchart TB
 4. A matching stored request replays its original response; a different hash returns 409.
 5. The domain creates the case and the application adds audit, outbox, and idempotency records.
 6. EF Core writes all records and commits once.
-7. The worker conditionally claims pending/expired records with a lease, publishes through the configured adapter, and marks success. Crashed leases become claimable again.
+7. The worker conditionally claims due pending or expired records with a lease, publishes through the configured adapter, and marks success only while it owns the lease. Failures back off and enter a dead-letter state after ten attempts; crashed leases become claimable again. Processed records are purged after 30 days.
 
 ## Case status update flow
 
