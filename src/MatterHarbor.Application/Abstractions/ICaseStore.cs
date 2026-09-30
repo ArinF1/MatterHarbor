@@ -1,6 +1,7 @@
 using MatterHarbor.Application.Cases;
 using MatterHarbor.Domain.Auditing;
 using MatterHarbor.Domain.Cases;
+using MatterHarbor.Domain.Organizations;
 
 namespace MatterHarbor.Application.Abstractions;
 
@@ -15,9 +16,13 @@ public interface ICaseStore
         string key,
         CancellationToken cancellationToken);
 
-    Task<bool> UserBelongsToOrganizationAsync(
+    Task<OrganizationRole?> GetUserRoleAsync(
         Guid organizationId,
         Guid userId,
+        CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<CaseAssigneeResponse>> ListAssigneesAsync(
+        Guid organizationId,
         CancellationToken cancellationToken);
 
     void AddCase(CaseItem caseItem);

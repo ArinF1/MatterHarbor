@@ -10,6 +10,8 @@ public static class DatabaseInitialization
     public static readonly Guid ContosoOrganizationId = Guid.Parse("22222222-2222-2222-2222-222222222222");
     public static readonly Guid AlexUserId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
     public static readonly Guid CaseyUserId = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
+    public static readonly Guid TaylorUserId = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc");
+    public static readonly Guid JordanUserId = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd");
 
     public static async Task InitializeDevelopmentMatterHarborDatabaseAsync(
         this IServiceProvider services,
@@ -39,6 +41,18 @@ public static class DatabaseInitialization
         {
             dbContext.OrganizationUsers.Add(
                 new OrganizationUser(CaseyUserId, ContosoOrganizationId, "dev-casey", "Casey Lee"));
+        }
+
+        if (!await dbContext.OrganizationUsers.AnyAsync(x => x.Id == TaylorUserId, cancellationToken))
+        {
+            dbContext.OrganizationUsers.Add(new OrganizationUser(
+                TaylorUserId, NorthwindOrganizationId, "dev-taylor", "Taylor Park", OrganizationRole.CaseWorker));
+        }
+
+        if (!await dbContext.OrganizationUsers.AnyAsync(x => x.Id == JordanUserId, cancellationToken))
+        {
+            dbContext.OrganizationUsers.Add(new OrganizationUser(
+                JordanUserId, NorthwindOrganizationId, "dev-jordan", "Jordan Reed", OrganizationRole.Viewer));
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);

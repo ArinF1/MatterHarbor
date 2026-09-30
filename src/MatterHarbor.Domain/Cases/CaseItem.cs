@@ -114,6 +114,22 @@ public sealed class CaseItem
         UpdatedAt = now;
     }
 
+    public void Assign(Guid? assignedUserId, int expectedVersion, DateTimeOffset now)
+    {
+        if (expectedVersion != Version)
+        {
+            throw new ConcurrencyConflictException();
+        }
+
+        if (assignedUserId == AssignedUserId)
+        {
+            throw new DomainValidationException("The case already has this assignment.");
+        }
+
+        AssignedUserId = assignedUserId;
+        UpdatedAt = now;
+    }
+
     private static void ValidateText(string value, string name, int minimum, int maximum)
     {
         var length = value?.Trim().Length ?? 0;

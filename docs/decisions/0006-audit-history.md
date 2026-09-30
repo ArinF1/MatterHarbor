@@ -9,4 +9,4 @@ Store append-only audit entries containing organization, actor, entity, action, 
 
 ## Consequences
 
-Creation history survives normal case evolution and avoids sensitive duplication. Database-role restrictions, complete mutation coverage, retention/legal hold, tamper evidence, and privileged operational access remain to be designed.
+Creation, status, and assignment history survives normal case evolution and avoids sensitive duplication. Database-role restrictions, retention/legal hold, tamper evidence, and privileged operational access remain to be designed.

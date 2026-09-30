@@ -63,14 +63,15 @@ public sealed class CasePersistenceTests(PostgreSqlFixture fixture) : IClassFixt
             .ExecuteAsync(
                 user,
                 created.Case.Id,
+                "status-change-key",
                 new ChangeCaseStatusCommand(CaseStatus.InProgress, created.Case.Version),
                 CancellationToken.None);
-        var audit = await context.AuditEntries.SingleAsync(x => x.EntityId == changed.Id && x.Action != "case.created");
+        var audit = await context.AuditEntries.SingleAsync(x => x.EntityId == changed.Case.Id && x.Action != "case.created");
 
         Assert.Equal(tenant.OrganizationId, audit.OrganizationId);
         Assert.Equal(tenant.UserId, audit.ActorUserId);
         Assert.Equal("case.status.changed:New->InProgress", audit.Action);
-        Assert.Equal(CaseStatus.InProgress, changed.Status);
+        Assert.Equal(CaseStatus.InProgress, changed.Case.Status);
     }
 
     [Fact]

@@ -27,6 +27,14 @@ public sealed class DevelopmentAuthenticationHandler(
                 DatabaseInitialization.CaseyUserId,
                 DatabaseInitialization.ContosoOrganizationId,
                 "Casey Lee"),
+            "taylor" => CreateIdentity(
+                DatabaseInitialization.TaylorUserId,
+                DatabaseInitialization.NorthwindOrganizationId,
+                "Taylor Park"),
+            "jordan" => CreateIdentity(
+                DatabaseInitialization.JordanUserId,
+                DatabaseInitialization.NorthwindOrganizationId,
+                "Jordan Reed"),
             _ => null
         };
 

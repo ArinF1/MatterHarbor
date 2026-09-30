@@ -1,8 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using MatterHarbor.Application.Abstractions;
+using MatterHarbor.Application.Cases;
 using MatterHarbor.Domain.Auditing;
 using MatterHarbor.Domain.Cases;
+using MatterHarbor.Domain.Organizations;
 
 namespace MatterHarbor.Infrastructure.Persistence;
 
@@ -37,14 +39,29 @@ public sealed class CaseStore(MatterHarborDbContext dbContext) : ICaseStore
             .SingleOrDefaultAsync(cancellationToken);
     }
 
-    public Task<bool> UserBelongsToOrganizationAsync(
+    public Task<OrganizationRole?> GetUserRoleAsync(
         Guid organizationId,
         Guid userId,
         CancellationToken cancellationToken)
     {
-        return dbContext.OrganizationUsers.AnyAsync(
-            x => x.OrganizationId == organizationId && x.Id == userId,
-            cancellationToken);
+        return dbContext.OrganizationUsers
+            .Where(x => x.OrganizationId == organizationId && x.Id == userId)
+            .Select(x => (OrganizationRole?)x.Role)
+            .SingleOrDefaultAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<CaseAssigneeResponse>> ListAssigneesAsync(
+        Guid organizationId,
+        CancellationToken cancellationToken)
+    {
+        return await dbContext.OrganizationUsers
+            .AsNoTracking()
+            .Where(x => x.OrganizationId == organizationId &&
+                (x.Role == OrganizationRole.Administrator || x.Role == OrganizationRole.CaseWorker))
+            .OrderBy(x => x.DisplayName)
+            .Select(x => new CaseAssigneeResponse(x.Id, x.DisplayName))
+            .Take(100)
+            .ToListAsync(cancellationToken);
     }
 
     public void AddCase(CaseItem caseItem) => dbContext.Cases.Add(caseItem);

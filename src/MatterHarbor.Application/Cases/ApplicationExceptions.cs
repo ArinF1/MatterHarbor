@@ -7,3 +7,5 @@ public sealed class AssignedUserNotFoundException()
     : Exception("The assigned user does not belong to this organization.");
 
 public sealed class CaseNotFoundException() : Exception("The case was not found.");
+
+public sealed class CaseAccessDeniedException() : Exception("This organization member cannot perform the requested case action.");

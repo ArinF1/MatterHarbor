@@ -34,7 +34,7 @@ flowchart TB
 
 ## Case creation flow
 
-1. Authentication produces trusted user and organization claims.
+1. Authentication produces trusted user and organization claims; the application verifies stored membership and role before case access.
 2. The API ignores any browser organization identifier and creates `UserContext` from those claims.
 3. The application opens a transaction and acquires a PostgreSQL transaction-scoped advisory lock for organization + idempotency key.
 4. A matching stored request replays its original response; a different hash returns 409.
@@ -42,11 +42,12 @@ flowchart TB
 6. EF Core writes all records and commits once.
 7. The worker conditionally claims due pending or expired records with a lease, publishes through the configured adapter, and marks success only while it owns the lease. Failures back off and enter a dead-letter state after ten attempts; crashed leases become claimable again. Processed records are purged after 30 days.
 
-## Case status update flow
+## Case mutation flow
 
-1. The application loads the case using both the authenticated organization ID and case ID.
-2. The domain validates the requested transition and expected integer version. New cases move to InProgress, then Resolved, and then Closed; Resolved cases can reopen to InProgress, while Closed cases are terminal.
-3. The application appends an audit entry containing the actor, organization, case, timestamp, and status transition. One EF Core save writes the changed case and audit entry atomically; a stale database version rejects both.
+1. The application verifies stored membership and role, then loads the case using both the authenticated organization ID and case ID.
+2. Status and assignment PUTs require an `If-Match` version ETag and `Idempotency-Key`. A transaction-scoped advisory lock serializes retries for the same actor, case, operation, and key.
+3. The domain validates the expected integer version. Status follows New → InProgress → Resolved → Closed, with a Resolved → InProgress reopen path. Only administrators assign eligible same-organization members. Assigned case workers may change status; viewers cannot mutate cases.
+4. The case, append-only audit entry, and original retry response commit in one PostgreSQL transaction. Same-key retries replay the response; changed requests conflict. A stale database version rejects the write and audit together.
 
 This design provides at-least-once processing. Consumers must remain idempotent; local logging does not prove Azure Service Bus semantics.
 

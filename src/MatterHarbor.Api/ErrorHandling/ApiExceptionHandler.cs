@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using MatterHarbor.Api.Authentication;
+using MatterHarbor.Api.Contracts;
 using MatterHarbor.Application.Cases;
 using MatterHarbor.Domain.Cases;
 
@@ -20,6 +21,8 @@ public sealed partial class ApiExceptionHandler(
             DomainValidationException => (StatusCodes.Status400BadRequest, "Validation failed", "validation-error"),
             AssignedUserNotFoundException => (StatusCodes.Status400BadRequest, "Validation failed", "validation-error"),
             InvalidUserContextException => (StatusCodes.Status403Forbidden, "Forbidden", "invalid-user-context"),
+            CaseAccessDeniedException => (StatusCodes.Status403Forbidden, "Forbidden", "case-access-denied"),
+            CasePreconditionRequiredException => (StatusCodes.Status428PreconditionRequired, "Precondition required", "precondition-required"),
             CaseNotFoundException => (StatusCodes.Status404NotFound, "Case not found", "case-not-found"),
             IdempotencyConflictException => (StatusCodes.Status409Conflict, "Idempotency conflict", "idempotency-conflict"),
             ConcurrencyConflictException => (StatusCodes.Status409Conflict, "Concurrency conflict", "concurrency-conflict"),

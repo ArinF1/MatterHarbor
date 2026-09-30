@@ -8,18 +8,16 @@ MatterHarbor helps municipalities, housing companies, and enterprise teams recor
 
 The v0.1 slice supports seeded development organizations/users, development persona authentication, case creation/list/details/status changes, assignment on creation when the user belongs to the organization, idempotency, optimistic concurrency with accessible conflict recovery, immutable creation audit records, transactional outbox records, worker processing, health endpoints, and telemetry. The current unreleased implementation also enforces a basic case status path (New → InProgress → Resolved → Closed, with resolved cases reopenable to InProgress) and appends an audit event for each status change. Closed is terminal. It remains limited to fictional local and CI data and is not production-ready. See README for the exact boundary.
 
-Current v1.0 groundwork removes production startup migration privileges and produces a versioned migration bundle that CI checksums, applies to disposable PostgreSQL, and smoke-tests with the API in Production mode. The worker now has bounded retries, dead-letter records, processed-record retention, and telemetry counters. Real Azure Service Bus contract verification remains planned. No shared or production environment is deployed.
+Current unreleased v1.0 work removes production startup migration privileges and produces a versioned migration bundle that CI checksums, applies to disposable PostgreSQL, and smoke-tests with the API in Production mode. The worker now has bounded retries, dead-letter records, processed-record retention, and telemetry counters. Stored organization roles gate case access: viewers can read, case workers can create unassigned or self-assigned cases and change the status of assigned cases, and administrators can create, assign eligible members, and change status. Assignment and status updates require a version ETag and idempotency key; they atomically write an audit event and retry response. Real Azure Service Bus contract verification remains planned. No shared or production environment is deployed.
 
 ## Planned capabilities
 
 The following are requirements, not implemented claims:
 
-- organization administration, user provisioning, and role-based permissions;
-- role-based case assignment and state-transition permissions;
-- append-only audit history for all material mutations beyond creation and status changes;
+- organization administration and OIDC user provisioning;
 - comments, internal notes, notifications, search, filters, and cursor pagination;
 - file uploads using Blob Storage, quarantine, malware scanning, and safe download;
-- command-wide idempotency and optimistic concurrency UX;
+- idempotency record expiry and richer concurrency UX;
 - personal-data export, deletion/anonymization, legal holds, and retention policies;
 - production rate-limit policies and structured problem catalogs;
 - operational dashboards, alerting, backup verification, restore runbooks, and disaster recovery;
@@ -32,7 +30,7 @@ The following are requirements, not implemented claims:
 - A case has a generated UUID, organization-scoped readable number, title, description, priority, status, optional assignee, timestamps, and integer version.
 - Status changes follow New → InProgress → Resolved → Closed; Resolved may return to InProgress, and Closed cannot transition further.
 - Duplicate retries with the same idempotency key and normalized payload return the original result; changed payloads conflict.
-- History is append-only and records actor, organization, action, entity, and timestamp without duplicating sensitive case text. Creation and status changes are recorded.
+- History is append-only and records actor, organization, action, entity, and timestamp without duplicating sensitive case text. Creation, assignment, and status changes are recorded.
 - Durable external messages originate from the transactional outbox.
 
 ## Non-functional goals

@@ -21,7 +21,7 @@ The repository currently implements one small vertical slice:
 - Development-only startup migrations plus a versioned, checksummed migration bundle that CI applies to disposable PostgreSQL;
 - local Compose dependencies, container definitions, CI, and un-deployed Bicep infrastructure.
 
-Azure deployment, file uploads and malware scanning, GDPR workflows, search, assignment workflows, dashboards, backups, and operational hardening are planned, not implemented.
+Azure deployment, file uploads and malware scanning, GDPR workflows, search, dashboards, backups, and operational hardening are planned, not implemented. The unreleased v1 work includes a basic role-aware assignment flow for fictional data.
 
 ## Architecture
 
@@ -101,16 +101,18 @@ az bicep build --file infra/bicep/main.bicep
 
 See [local development](docs/development/local-development.md) and [reproducible build instructions](docs/development/reproducible-builds.md).
 
-The API never applies migrations outside `Development`. Shared environments must use the CI-built artifact and the [controlled migration runbook](docs/operations/database-migrations.md); runtime identities must not have schema-altering permissions.
+The API never applies migrations outside `Development`. Shared environments must use the CI-built artifact and the [controlled migration runbook](docs/operations/database-migrations.md); runtime identities must not have schema-altering permissions. See the [fictional-data backup and restore exercise](docs/operations/backup-restore.md) for the CI rehearsal and outstanding Azure gate.
 
 ## API
 
-In Development, send `X-MatterHarbor-User: alex` or `X-MatterHarbor-User: casey`. Case creation also requires `Idempotency-Key`.
+In Development, send `X-MatterHarbor-User: alex` or `X-MatterHarbor-User: casey` (administrators), `taylor` (case worker), or `jordan` (viewer). Case creation requires `Idempotency-Key`. Status and assignment updates require that key plus `If-Match: "v<version>"` from the case's `ETag`; same-key retries return the original result.
 
 - `GET /api/cases?page=1&pageSize=25`
 - `GET /api/cases/{id}`
+- `GET /api/cases/assignees` (administrator only, maximum 100)
 - `POST /api/cases`
 - `PUT /api/cases/{id}/status`
+- `PUT /api/cases/{id}/assignment` (administrator only)
 - `GET /health/live`
 - `GET /health/ready`
 - `GET /openapi/v1.json` (Development only)
