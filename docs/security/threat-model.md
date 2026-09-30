@@ -6,17 +6,17 @@ This initial model covers identities, organization boundaries, case records, aud
 
 | Threat | Current mitigation | Residual work |
 | --- | --- | --- |
-| Forged or invalid identity | Production uses HTTPS OIDC metadata with issuer, audience, lifetime, and signature validation; missing configuration fails startup | Provisioning, key-rotation drills, claims mapping, role policies |
+| Forged or invalid identity | Production uses HTTPS OIDC metadata with issuer, audience, lifetime, and signature validation; missing configuration fails startup. Case use cases verify stored organization membership and role | OIDC provisioning, key-rotation drills, claims mapping review |
 | Development auth exposed in production | Startup throws unless the host environment is Development | Deployment policy test and image-level environment review |
 | Cross-organization access | Server derives organization from claims; every list/get/update query predicates organization + identifier; tests cover isolation | Route inventory test as surface grows; database RLS evaluation |
 | IDOR through UUID | UUID alone never authorizes access | Continue scoped queries for all new entities |
-| Concurrent overwrite | Integer EF concurrency token, 409 response, and accessible reload-before-retry conflict UX | Add ETag/If-Match HTTP semantics |
-| Duplicate command | Required idempotency key, normalized SHA-256 payload hash, database key, advisory transaction lock | Expiry/retention policy and coverage for all writes |
-| Audit tampering | Application only appends; DbContext rejects update/delete; creation and status-change audit records commit with their case writes | Restricted DB role, hash chaining/WORM evaluation, audit coverage for remaining mutations |
-| Lost or duplicate async work | Same-transaction outbox, conditional lease claims, expired-lease recovery | Dead-letter policy, backoff, idempotent consumers, Service Bus contract tests |
+| Concurrent overwrite | Integer EF concurrency token, required version ETag on update, 409 response, and reload-before-retry conflict UX | Broader multi-user load testing |
+| Duplicate command | Required idempotency key on all current case writes, SHA-256 request hash, database key, advisory transaction lock | Expiry/retention policy |
+| Audit tampering | Application only appends; DbContext rejects update/delete; creation, status, and assignment audit records commit with their case writes | Restricted DB role, hash chaining/WORM evaluation |
+| Lost or duplicate async work | Same-transaction outbox, conditional lease claims and completion, expired-lease recovery, bounded retry backoff, dead-letter state, and operator redrive runbook | Idempotent consumers, Service Bus contract tests, dead-letter recovery exercise, and alerts |
 | Sensitive log disclosure | No request bodies, tokens, descriptions, titles, or payloads are logged; stable IDs/error codes only | Automated log redaction tests and production telemetry review |
-| Denial of service | Bounded lists, conservative fixed-window rate limit, input length limits | Per-route policies, distributed counters, load tests, request size limits |
-| Uncontrolled schema change | API startup migrates and seeds only in Development; CI applies a checksummed bundle over fictional existing data and proves its runtime test role cannot create schema objects | Restricted production migration/runtime DB roles, serialized deployment integration, broader compatibility tests, exercised backup/restore |
+| Denial of service | Bounded case and assignee lists, conservative fixed-window rate limit, input length limits | Per-route policies, distributed counters, load tests, request size limits |
+| Uncontrolled schema change | API startup migrates and seeds only in Development; CI applies a checksummed bundle from the original v0.1 schema with a non-superuser migration role and proves separate API and worker roles cannot create schema objects | Restricted Azure identities, serialized deployment integration, broader compatibility tests, exercised cloud backup/restore |
 | Malicious file upload (planned) | No file upload exists | Quarantine container, content validation, malware scan, safe names, access-controlled download |
 | Personal-data over-retention | No real data is permitted in this early project | Classification, retention jobs, export, anonymization, legal-hold policy |
 | Supply-chain compromise | Lockfiles, central versions, CI vulnerability checks, least-privilege workflow token | Dependabot/Renovate, provenance and signed release process |

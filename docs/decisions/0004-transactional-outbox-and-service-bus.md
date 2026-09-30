@@ -9,4 +9,4 @@ Persist durable integration events in PostgreSQL in the business transaction. A 
 
 ## Consequences
 
-Database commits cannot lose the intent to publish. Delivery is at least once, so consumers require idempotency. Lease expiry handles worker crashes but retry backoff, dead-letter operations, retention, and real Service Bus contract tests remain planned.
+Database commits cannot lose the intent to publish. Delivery is at least once, so consumers require idempotency. Lease expiry handles worker crashes. The worker now applies bounded retry backoff, dead-letters after ten failures, emits counters, and purges processed records after 30 days. Operators can review and redrive a dead-letter record using the [outbox runbook](../operations/outbox.md). A sender-level SDK test checks message identity and JSON metadata; a live Azure Service Bus exercise remains planned.

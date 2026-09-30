@@ -63,14 +63,15 @@ public sealed class CasePersistenceTests(PostgreSqlFixture fixture) : IClassFixt
             .ExecuteAsync(
                 user,
                 created.Case.Id,
+                "status-change-key",
                 new ChangeCaseStatusCommand(CaseStatus.InProgress, created.Case.Version),
                 CancellationToken.None);
-        var audit = await context.AuditEntries.SingleAsync(x => x.EntityId == changed.Id && x.Action != "case.created");
+        var audit = await context.AuditEntries.SingleAsync(x => x.EntityId == changed.Case.Id && x.Action != "case.created");
 
         Assert.Equal(tenant.OrganizationId, audit.OrganizationId);
         Assert.Equal(tenant.UserId, audit.ActorUserId);
         Assert.Equal("case.status.changed:New->InProgress", audit.Action);
-        Assert.Equal(CaseStatus.InProgress, changed.Status);
+        Assert.Equal(CaseStatus.InProgress, changed.Case.Status);
     }
 
     [Fact]
@@ -175,6 +176,89 @@ public sealed class CasePersistenceTests(PostgreSqlFixture fixture) : IClassFixt
     }
 
     [Fact]
+    public async Task Failed_outbox_delivery_backs_off_dead_letters_and_can_be_redriven()
+    {
+        var tenant = await fixture.AddTenantAsync();
+        await using var context = fixture.CreateContext();
+        await CreateService(context).ExecuteAsync(
+            new UserContext(tenant.UserId, tenant.OrganizationId),
+            $"retry-{Guid.NewGuid():N}",
+            ValidCommand(),
+            CancellationToken.None);
+        await context.OutboxMessages.Where(x => x.OrganizationId == tenant.OrganizationId)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(x => x.OccurredAt, Now.AddYears(-2)));
+        var message = await context.OutboxMessages.AsNoTracking().SingleAsync(x => x.OrganizationId == tenant.OrganizationId);
+        var clock = new MutableClock(Now);
+        var publisher = new FailingPublisher();
+        var processor = new OutboxProcessor(context, publisher, clock, NullLogger<OutboxProcessor>.Instance);
+
+        for (var attempt = 1; attempt <= 10; attempt++)
+        {
+            Assert.Equal(0, await processor.ProcessBatchAsync(1, CancellationToken.None));
+            message = await context.OutboxMessages.AsNoTracking().SingleAsync(x => x.Id == message.Id);
+            Assert.Equal(attempt, message.AttemptCount);
+            Assert.Equal("InvalidOperationException", message.LastErrorCode);
+            if (attempt < 10)
+            {
+                Assert.Equal(OutboxStatus.Pending, message.Status);
+                Assert.NotNull(message.NextAttemptAt);
+                Assert.Equal(0, await processor.ProcessBatchAsync(1, CancellationToken.None));
+                clock.Now = message.NextAttemptAt.Value;
+            }
+        }
+
+        Assert.Equal(OutboxStatus.DeadLetter, message.Status);
+        Assert.NotNull(message.DeadLetteredAt);
+        Assert.Null(message.NextAttemptAt);
+        Assert.Equal(0, await processor.ProcessBatchAsync(1, CancellationToken.None));
+        Assert.Equal(10, publisher.Attempts);
+
+        await context.OutboxMessages.Where(x => x.Id == message.Id)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(x => x.Status, OutboxStatus.Pending)
+                .SetProperty(x => x.AttemptCount, 0)
+                .SetProperty(x => x.DeadLetteredAt, (DateTimeOffset?)null)
+                .SetProperty(x => x.LastErrorCode, (string?)null));
+        publisher.Fail = false;
+        Assert.Equal(1, await processor.ProcessBatchAsync(1, CancellationToken.None));
+        message = await context.OutboxMessages.AsNoTracking().SingleAsync(x => x.Id == message.Id);
+        Assert.Equal(OutboxStatus.Processed, message.Status);
+        Assert.Equal(11, publisher.Attempts);
+
+        clock.Now = clock.Now.AddDays(31);
+        Assert.Equal(1, await processor.PurgeProcessedAsync(CancellationToken.None));
+        Assert.False(await context.OutboxMessages.AnyAsync(x => x.Id == message.Id));
+    }
+
+    [Fact]
+    public async Task Worker_cannot_finish_a_message_after_losing_its_lease()
+    {
+        var tenant = await fixture.AddTenantAsync();
+        await using var createContext = fixture.CreateContext();
+        await CreateService(createContext).ExecuteAsync(
+            new UserContext(tenant.UserId, tenant.OrganizationId),
+            $"lease-{Guid.NewGuid():N}",
+            ValidCommand(),
+            CancellationToken.None);
+        await createContext.OutboxMessages.Where(x => x.OrganizationId == tenant.OrganizationId)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(x => x.OccurredAt, Now.AddYears(-1)));
+
+        await using var processorContext = fixture.CreateContext();
+        await using var rivalContext = fixture.CreateContext();
+        var processor = new OutboxProcessor(
+            processorContext,
+            new LeaseStealingPublisher(rivalContext),
+            new FixedClock(Now),
+            NullLogger<OutboxProcessor>.Instance);
+
+        Assert.Equal(0, await processor.ProcessBatchAsync(1, CancellationToken.None));
+        var message = await rivalContext.OutboxMessages.AsNoTracking()
+            .SingleAsync(x => x.OrganizationId == tenant.OrganizationId);
+        Assert.Equal(OutboxStatus.Processing, message.Status);
+        Assert.NotNull(message.LockId);
+    }
+
+    [Fact]
     public async Task Development_seed_is_idempotent_in_a_nonempty_database()
     {
         await fixture.AddTenantAsync();
@@ -209,6 +293,41 @@ public sealed class CasePersistenceTests(PostgreSqlFixture fixture) : IClassFixt
     private sealed class FixedClock(DateTimeOffset now) : IClock
     {
         public DateTimeOffset UtcNow => now;
+    }
+
+    private sealed class MutableClock(DateTimeOffset now) : IClock
+    {
+        public DateTimeOffset Now { get; set; } = now;
+
+        public DateTimeOffset UtcNow => Now;
+    }
+
+    private sealed class FailingPublisher : IOutboxPublisher
+    {
+        public bool Fail { get; set; } = true;
+
+        public int Attempts { get; private set; }
+
+        public Task PublishAsync(OutboxMessage message, CancellationToken cancellationToken)
+        {
+            Attempts++;
+            if (Fail)
+            {
+                throw new InvalidOperationException("Synthetic publisher failure.");
+            }
+
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class LeaseStealingPublisher(MatterHarborDbContext rivalContext) : IOutboxPublisher
+    {
+        public async Task PublishAsync(OutboxMessage message, CancellationToken cancellationToken)
+        {
+            await rivalContext.OutboxMessages.Where(x => x.Id == message.Id)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(x => x.LockId, Guid.NewGuid()), cancellationToken);
+        }
     }
 
     private sealed class CountingPublisher : IOutboxPublisher

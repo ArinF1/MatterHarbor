@@ -1,4 +1,4 @@
-import { FormEvent, ReactNode, useEffect, useState } from 'react'
+import { FormEvent, ReactNode, useEffect, useRef, useState } from 'react'
 import {
   Link,
   Redirect,
@@ -7,7 +7,7 @@ import {
   useLocation,
   useParams,
 } from 'wouter'
-import { api, ApiError, CaseItem, CasePriority, CaseStatus, nextCaseStatuses } from './api'
+import { api, ApiError, CaseAssignee, CaseItem, CasePriority, CaseStatus, nextCaseStatuses } from './api'
 import { PersonaContext, personaOptions, usePersona } from './persona'
 
 function Layout({ children }: { children: ReactNode }) {
@@ -41,6 +41,7 @@ function Layout({ children }: { children: ReactNode }) {
 
 function CaseListPage() {
   const { persona } = usePersona()
+  const role = personaOptions.find((option) => option.key === persona)?.role
   const [cases, setCases] = useState<CaseItem[]>([])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
@@ -67,7 +68,7 @@ function CaseListPage() {
     <>
       <div className="page-heading">
         <div><h1>Cases</h1><p>Cases for the selected development organization.</p></div>
-        <Link className="button" href="/cases/new">Create case</Link>
+        {role !== 'Viewer' && <Link className="button" href="/cases/new">Create case</Link>}
       </div>
       {loading && <p className="status" role="status">Loading cases…</p>}
       {error && <div className="error" role="alert"><p>{error}</p><button type="button" onClick={() => setReloadToken((value) => value + 1)}>Try again</button></div>}
@@ -131,6 +132,7 @@ export function CreateCasePage() {
 
 function CaseDetailsPage() {
   const { persona } = usePersona()
+  const currentPersona = personaOptions.find((option) => option.key === persona)
   const { id = '' } = useParams<{ id: string }>()
   const [item, setItem] = useState<CaseItem | null>(null)
   const [error, setError] = useState('')
@@ -138,17 +140,24 @@ function CaseDetailsPage() {
   const [nextStatus, setNextStatus] = useState<CaseStatus>('New')
   const [saving, setSaving] = useState(false)
   const [conflict, setConflict] = useState(false)
+  const [assignees, setAssignees] = useState<CaseAssignee[]>([])
+  const [assignedUserId, setAssignedUserId] = useState('')
+  const statusRetry = useRef<{ status: CaseStatus, version: number, key: string } | null>(null)
+  const assignmentRetry = useRef<{ assignedUserId: string, version: number, key: string } | null>(null)
 
   useEffect(() => {
     let active = true
     setError('')
     setItem(null)
     setConflict(false)
+    statusRetry.current = null
+    assignmentRetry.current = null
     api.getCase(persona, id)
       .then((value) => {
         if (active) {
           setItem(value)
           setNextStatus(value.status)
+          setAssignedUserId(value.assignedUserId ?? '')
         }
       })
       .catch((reason: unknown) => {
@@ -157,6 +166,18 @@ function CaseDetailsPage() {
     return () => { active = false }
   }, [id, persona, reloadToken])
 
+  useEffect(() => {
+    let active = true
+    if (currentPersona?.role === 'Administrator' && item) {
+      api.listAssignees(persona)
+        .then((users) => { if (active) setAssignees(users) })
+        .catch((reason: unknown) => { if (active) setError(toMessage(reason)) })
+    } else {
+      setAssignees([])
+    }
+    return () => { active = false }
+  }, [persona, currentPersona?.role, item?.id])
+
   const updateStatus = async (event: FormEvent) => {
     event.preventDefault()
     if (!item) return
@@ -164,15 +185,43 @@ function CaseDetailsPage() {
     setError('')
     setConflict(false)
     try {
-      const updated = await api.changeCaseStatus(persona, item.id, nextStatus, item.version)
+      const pending = statusRetry.current?.status === nextStatus && statusRetry.current.version === item.version
+        ? statusRetry.current
+        : { status: nextStatus, version: item.version, key: crypto.randomUUID() }
+      statusRetry.current = pending
+      const updated = await api.changeCaseStatus(persona, item.id, nextStatus, item.version, pending.key)
       setItem(updated)
       setNextStatus(updated.status)
+      statusRetry.current = null
     } catch (reason) {
       if (reason instanceof ApiError && reason.status === 409) {
         setConflict(true)
       } else {
         setError(toMessage(reason))
       }
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const updateAssignment = async (event: FormEvent) => {
+    event.preventDefault()
+    if (!item) return
+    setSaving(true)
+    setError('')
+    setConflict(false)
+    try {
+      const pending = assignmentRetry.current?.assignedUserId === assignedUserId && assignmentRetry.current.version === item.version
+        ? assignmentRetry.current
+        : { assignedUserId, version: item.version, key: crypto.randomUUID() }
+      assignmentRetry.current = pending
+      const updated = await api.changeCaseAssignment(persona, item.id, assignedUserId || null, item.version, pending.key)
+      setItem(updated)
+      setAssignedUserId(updated.assignedUserId ?? '')
+      assignmentRetry.current = null
+    } catch (reason) {
+      if (reason instanceof ApiError && reason.status === 409) setConflict(true)
+      else setError(toMessage(reason))
     } finally {
       setSaving(false)
     }
@@ -186,16 +235,24 @@ function CaseDetailsPage() {
       <Link href="/cases">← All cases</Link>
       <span className="case-number">{item.caseNumber}</span>
       <h1>{item.title}</h1>
-      <dl><div><dt>Status</dt><dd>{item.status}</dd></div><div><dt>Priority</dt><dd>{item.priority}</dd></div><div><dt>Version</dt><dd>{item.version}</dd></div></dl>
+      <dl><div><dt>Status</dt><dd>{item.status}</dd></div><div><dt>Priority</dt><dd>{item.priority}</dd></div><div><dt>Assigned to</dt><dd>{assignees.find((user) => user.id === item.assignedUserId)?.displayName ?? (item.assignedUserId ? 'Organization member' : 'Unassigned')}</dd></div><div><dt>Version</dt><dd>{item.version}</dd></div></dl>
       {error && <p className="error" role="alert">{error}</p>}
       {conflict && <div className="conflict" role="alert"><p>This case changed while you were editing. Reload the latest version before trying again.</p><button type="button" onClick={() => setReloadToken((value) => value + 1)}>Reload case</button></div>}
-      <form className="status-form" onSubmit={updateStatus} aria-busy={saving}>
-        <label>Status<select value={nextStatus} onChange={(event) => setNextStatus(event.target.value as CaseStatus)}>
+      {(currentPersona?.role === 'Administrator' || (currentPersona?.role === 'CaseWorker' && item.assignedUserId === currentPersona.userId)) && <form className="status-form" onSubmit={updateStatus} aria-busy={saving}>
+        <label>Status<select value={nextStatus} onChange={(event) => { setNextStatus(event.target.value as CaseStatus); statusRetry.current = null }}>
           <option value={item.status}>{item.status}</option>
           {nextCaseStatuses(item.status).map((status) => <option key={status} value={status}>{status}</option>)}
         </select></label>
         <button disabled={saving || nextStatus === item.status} type="submit">{saving ? 'Updating…' : 'Update status'}</button>
       </form>
+      }
+      {currentPersona?.role === 'Administrator' && <form className="status-form" onSubmit={updateAssignment} aria-busy={saving}>
+        <label>Assign to<select value={assignedUserId} onChange={(event) => { setAssignedUserId(event.target.value); assignmentRetry.current = null }}>
+          <option value="">Unassigned</option>
+          {assignees.map((user) => <option key={user.id} value={user.id}>{user.displayName}</option>)}
+        </select></label>
+        <button disabled={saving || assignedUserId === (item.assignedUserId ?? '')} type="submit">{saving ? 'Updating…' : 'Update assignment'}</button>
+      </form>}
       {item.status === 'Closed' && <p className="status">This case is closed. No further status changes are available.</p>}
       <h2>Description</h2><p className="description">{item.description}</p>
     </article>

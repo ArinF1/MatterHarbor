@@ -33,6 +33,7 @@ public static class DependencyInjection
         services.AddScoped<CreateCaseService>();
         services.AddScoped<CaseQueryService>();
         services.AddScoped<ChangeCaseStatusService>();
+        services.AddScoped<ChangeCaseAssignmentService>();
         services.AddScoped<OutboxProcessor>();
 
         var transport = configuration["Messaging:Transport"] ?? "Local";

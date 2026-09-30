@@ -27,6 +27,7 @@ test('creates a case with persona and idempotency headers, then opens it', async
   const fetchMock = vi.fn()
     .mockResolvedValueOnce(new Response(JSON.stringify(createdCase), { status: 201 }))
     .mockResolvedValueOnce(new Response(JSON.stringify(createdCase), { status: 200 }))
+    .mockResolvedValueOnce(new Response(JSON.stringify([]), { status: 200 }))
   vi.stubGlobal('fetch', fetchMock)
   const user = userEvent.setup()
   const { hook } = memoryLocation({ path: '/cases/new' })
