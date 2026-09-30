@@ -30,7 +30,7 @@
 - [x] Document controlled single-run migration, backup preflight, verification, and failure handling
 - [x] Add bounded outbox retry, dead-letter records, processed-record retention, telemetry, an operator redrive runbook, and a Service Bus sender-level contract test
 - [x] Add stored organization roles, scoped member checks, administrator assignment, case-worker status policy, ETag/If-Match, update idempotency, and assignment audit
-- [ ] Run the new pg_dump/pg_restore CI exercise over the fictional v0.1 fixture and verify the restored migration head, case, and member role
+- [x] Run the pg_dump/pg_restore CI exercise over the fictional v0.1 fixture and verify the restored migration head, case, and member role (PR #35 migration-bundle job)
 
 ## Highest-priority next tasks
 

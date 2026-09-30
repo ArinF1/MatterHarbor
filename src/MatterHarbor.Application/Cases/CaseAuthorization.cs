@@ -10,14 +10,17 @@ public static class CaseAuthorization
         UserContext user,
         CancellationToken cancellationToken)
     {
-        return await store.GetUserRoleAsync(user.OrganizationId, user.UserId, cancellationToken)
-            ?? throw new CaseAccessDeniedException();
+        var role = await store.GetUserRoleAsync(user.OrganizationId, user.UserId, cancellationToken);
+        return role is OrganizationRole.Viewer or OrganizationRole.CaseWorker or OrganizationRole.Administrator
+            ? role.Value
+            : throw new CaseAccessDeniedException();
     }
 
     public static void RequireCreate(OrganizationRole role, UserContext user, Guid? assignedUserId)
     {
-        if (role == OrganizationRole.Viewer ||
-            (role == OrganizationRole.CaseWorker && assignedUserId is not null && assignedUserId != user.UserId))
+        if (role != OrganizationRole.Administrator &&
+            (role != OrganizationRole.CaseWorker ||
+             (assignedUserId is not null && assignedUserId != user.UserId)))
         {
             throw new CaseAccessDeniedException();
         }
