@@ -18,6 +18,7 @@ All notable changes will be documented here. The format follows Keep a Changelog
 
 - Added a versioned, checksummed EF Core migration bundle that CI applies over fictional v0.1 rows, verifies for data preservation, and smoke-tests through a schema-restricted production-mode API identity.
 - Added a controlled migration runbook covering backup preflight, serialized execution, verification, and forward-fix failure handling.
+- Added bounded outbox retries, dead-letter records, lease-safe completion, processed-record retention, OpenTelemetry counters, and an operator redrive runbook.
 
 ### Fixed
 

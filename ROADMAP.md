@@ -6,7 +6,7 @@ MatterHarbor is not production-ready. Priorities are ordered by risk reduction a
 
 - Integrate the CI-tested migration bundle into an approved deployment pipeline with a restricted migration identity and exercised backup/restore. Production startup no longer applies schema changes.
 - Add roles and explicit case transition/assignment policies with complete audit coverage.
-- Add outbox retry backoff, dead-letter operations, retention, metrics, and Azure Service Bus contract tests.
+- Exercise dead-letter recovery and Azure Service Bus contract tests against the new outbox retry and retention flow.
 
 ## Next — usable case collaboration
 

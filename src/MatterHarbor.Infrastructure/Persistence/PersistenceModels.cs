@@ -17,7 +17,8 @@ public enum OutboxStatus
 {
     Pending = 1,
     Processing = 2,
-    Processed = 3
+    Processed = 3,
+    DeadLetter = 4
 }
 
 public sealed class OutboxMessage
@@ -41,6 +42,10 @@ public sealed class OutboxMessage
     public DateTimeOffset? LockedUntil { get; set; }
 
     public DateTimeOffset? ProcessedAt { get; set; }
+
+    public DateTimeOffset? NextAttemptAt { get; set; }
+
+    public DateTimeOffset? DeadLetteredAt { get; set; }
 
     public string? LastErrorCode { get; set; }
 }

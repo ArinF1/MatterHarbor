@@ -28,13 +28,14 @@
 - [x] Restrict startup migration and fictional seeding to Development
 - [x] Build, checksum, apply over fictional v0.1 data, verify preservation and runtime-role restrictions, and smoke-test the versioned EF migration bundle in CI
 - [x] Document controlled single-run migration, backup preflight, verification, and failure handling
+- [x] Add bounded outbox retry, dead-letter records, processed-record retention, telemetry, an operator redrive runbook, and a Service Bus sender-level contract test
 
 ## Highest-priority next tasks
 
 The [v1.0.0 release gates](releases/v1.0.0-readiness.md) are required before tagging the next release.
 
 1. Add roles, role-aware assignment rules, ETag/If-Match, and audit coverage for remaining case mutations.
-2. Operationalize outbox retries, dead-letter handling, retention, metrics, and Azure Service Bus contract tests.
+2. Exercise Azure Service Bus adapter contract and dead-letter recovery in a disposable environment.
 3. Add an approved deployment pipeline, restricted migration/runtime database identities, and an exercised backup/restore runbook before any shared environment.
 
 ## Deferred product work

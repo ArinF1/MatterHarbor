@@ -13,7 +13,7 @@ The repository currently implements one small vertical slice:
 - required idempotency keys, replay, and conflicting-payload detection;
 - integer optimistic concurrency;
 - atomic case and status-audit persistence; creation also commits immutable audit, idempotency, and outbox records together;
-- a leased outbox worker with local structured notification logging and an Azure Service Bus adapter;
+- a leased outbox worker with bounded retries, dead-letter handling, processed-record retention, telemetry, local structured notification logging, and an Azure Service Bus adapter;
 - PostgreSQL migrations and development seed personas;
 - liveness/readiness endpoints, rate limiting, problem details, security headers, and OpenTelemetry;
 - React persona selection, case list, creation form, and details screen;
