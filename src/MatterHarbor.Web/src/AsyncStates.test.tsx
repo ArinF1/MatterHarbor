@@ -46,6 +46,7 @@ test('explains a concurrency conflict and reloads the latest case', async () => 
   }
   const fetchMock = vi.fn()
     .mockResolvedValueOnce(new Response(JSON.stringify(caseItem), { status: 200 }))
+    .mockResolvedValueOnce(new Response(JSON.stringify([]), { status: 200 }))
     .mockResolvedValueOnce(new Response(JSON.stringify(conflict), { status: 409 }))
     .mockResolvedValueOnce(new Response(JSON.stringify(latest), { status: 200 }))
   vi.stubGlobal('fetch', fetchMock)

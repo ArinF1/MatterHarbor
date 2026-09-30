@@ -38,3 +38,9 @@ public sealed record CaseResponse(
 public sealed record CreateCaseResult(CaseResponse Case, bool IsReplay);
 
 public sealed record ChangeCaseStatusCommand(CaseStatus Status, int ExpectedVersion);
+
+public sealed record ChangeCaseAssignmentCommand(Guid? AssignedUserId, int ExpectedVersion);
+
+public sealed record CaseMutationResult(CaseResponse Case, bool IsReplay);
+
+public sealed record CaseAssigneeResponse(Guid Id, string DisplayName);

@@ -34,7 +34,7 @@ VALUES (
     'Fictional migration fixture',
     'Synthetic data used only to test schema upgrades.',
     'Normal',
-    'Open',
+    'New',
     'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
     '2026-07-01T10:00:00Z',
     '2026-07-01T10:00:00Z',

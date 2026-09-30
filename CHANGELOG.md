@@ -19,6 +19,8 @@ All notable changes will be documented here. The format follows Keep a Changelog
 - Added a versioned, checksummed EF Core migration bundle that CI applies over fictional v0.1 rows, verifies for data preservation, and smoke-tests through a schema-restricted production-mode API identity.
 - Added a controlled migration runbook covering backup preflight, serialized execution, verification, and forward-fix failure handling.
 - Added bounded outbox retries, dead-letter records, lease-safe completion, processed-record retention, OpenTelemetry counters, and an operator redrive runbook.
+- Added stored organization roles, same-organization assignee selection, administrator assignment, and assigned case-worker status updates. Case mutations now use ETag preconditions and stored idempotency results with atomic audit writes.
+- Added a disposable PostgreSQL backup and restore CI exercise over the fictional v0.1 fixture, including restored migration-head and case checks.
 
 ### Fixed
 
