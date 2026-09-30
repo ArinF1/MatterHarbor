@@ -11,6 +11,7 @@ All notable changes will be documented here. The format follows Keep a Changelog
 - Updated Testcontainers.PostgreSql to 4.15.0 so its transitive SSH.NET dependency resolves to the patched 2026.0.0 release.
 - Updated the frontend lockfile and Vitest to resolve all six advisories reported by the npm audit.
 - Applied compatible pending Dependabot updates and upgraded the Node 22 patch baseline for jsdom 30; deferred TypeScript 7 until the lint parser supports it.
+- Refreshed the grouped NuGet and web dependencies, xUnit runner 4, and Vitest 5 with regenerated locked dependency graphs.
 - Restricted automatic PostgreSQL migration and fictional seed data to Development; production startup no longer owns schema changes.
 
 ### Added
