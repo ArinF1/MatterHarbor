@@ -30,6 +30,11 @@ export interface CreateCaseInput {
   assignedUserId: string | null
 }
 
+export interface CaseAssignee {
+  id: string
+  displayName: string
+}
+
 export interface ProblemDetails {
   title?: string
   detail?: string
@@ -72,6 +77,7 @@ async function request<T>(path: string, persona: string, init?: RequestInit): Pr
 
 export const api = {
   listCases: (persona: string) => request<CaseItem[]>('/api/cases?page=1&pageSize=50', persona),
+  listAssignees: (persona: string) => request<CaseAssignee[]>('/api/cases/assignees', persona),
   getCase: (persona: string, id: string) => request<CaseItem>(`/api/cases/${id}`, persona),
   createCase: (persona: string, input: CreateCaseInput, idempotencyKey: string) =>
     request<CaseItem>('/api/cases', persona, {
@@ -79,9 +85,16 @@ export const api = {
       headers: { 'Idempotency-Key': idempotencyKey },
       body: JSON.stringify(input),
     }),
-  changeCaseStatus: (persona: string, id: string, status: CaseStatus, version: number) =>
+  changeCaseStatus: (persona: string, id: string, status: CaseStatus, version: number, idempotencyKey: string) =>
     request<CaseItem>(`/api/cases/${id}/status`, persona, {
       method: 'PUT',
-      body: JSON.stringify({ status, version }),
+      headers: { 'If-Match': `"v${version}"`, 'Idempotency-Key': idempotencyKey },
+      body: JSON.stringify({ status }),
+    }),
+  changeCaseAssignment: (persona: string, id: string, assignedUserId: string | null, version: number, idempotencyKey: string) =>
+    request<CaseItem>(`/api/cases/${id}/assignment`, persona, {
+      method: 'PUT',
+      headers: { 'If-Match': `"v${version}"`, 'Idempotency-Key': idempotencyKey },
+      body: JSON.stringify({ assignedUserId }),
     }),
 }

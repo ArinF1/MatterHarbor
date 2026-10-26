@@ -26,6 +26,7 @@ test('returns to the organization case list when the persona changes', async () 
   const fetchMock = vi.fn()
     .mockResolvedValueOnce(new Response(JSON.stringify(alexCase), { status: 200 }))
     .mockResolvedValueOnce(new Response(JSON.stringify([]), { status: 200 }))
+    .mockResolvedValueOnce(new Response(JSON.stringify([]), { status: 200 }))
     .mockResolvedValueOnce(new Response(JSON.stringify([alexCase]), { status: 200 }))
   vi.stubGlobal('fetch', fetchMock)
   const user = userEvent.setup()
@@ -37,13 +38,13 @@ test('returns to the organization case list when the persona changes', async () 
   await user.selectOptions(screen.getByLabelText('Development persona'), 'casey')
   expect(await screen.findByRole('heading', { name: 'Cases' })).toBeVisible()
   expect(await screen.findByText('No cases yet.')).toBeVisible()
-  expect(fetchMock.mock.calls[1][1]).toMatchObject({
+  expect(fetchMock.mock.calls[2][1]).toMatchObject({
     headers: expect.objectContaining({ 'X-MatterHarbor-User': 'casey' }),
   })
 
   await user.selectOptions(screen.getByLabelText('Development persona'), 'alex')
   expect(await screen.findByText(alexCase.title)).toBeVisible()
-  expect(fetchMock.mock.calls[2][1]).toMatchObject({
+  expect(fetchMock.mock.calls[3][1]).toMatchObject({
     headers: expect.objectContaining({ 'X-MatterHarbor-User': 'alex' }),
   })
 })

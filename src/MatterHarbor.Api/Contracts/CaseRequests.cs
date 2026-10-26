@@ -8,4 +8,6 @@ public sealed record CreateCaseRequest(
     CasePriority Priority,
     Guid? AssignedUserId);
 
-public sealed record ChangeCaseStatusRequest(CaseStatus Status, int Version);
+public sealed record ChangeCaseStatusRequest(CaseStatus Status);
+
+public sealed record ChangeCaseAssignmentRequest(Guid? AssignedUserId);

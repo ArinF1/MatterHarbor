@@ -2,6 +2,7 @@ using System.Text.Json;
 using MatterHarbor.Application.Abstractions;
 using MatterHarbor.Domain.Auditing;
 using MatterHarbor.Domain.Cases;
+using MatterHarbor.Domain.Organizations;
 
 namespace MatterHarbor.Application.Cases;
 
@@ -35,6 +36,9 @@ public sealed class CreateCaseService(ICaseStore store, IClock clock)
             throw new DomainValidationException("Priority is invalid.");
         }
 
+        var role = await CaseAuthorization.RequireMemberAsync(store, user, cancellationToken);
+        CaseAuthorization.RequireCreate(role, user, command.AssignedUserId);
+
         var requestHash = IdempotencyHasher.Hash(command);
         await using var transaction = await store.BeginTransactionAsync(cancellationToken);
         await store.AcquireIdempotencyLockAsync(user.OrganizationId, idempotencyKey, cancellationToken);
@@ -54,7 +58,8 @@ public sealed class CreateCaseService(ICaseStore store, IClock clock)
         }
 
         if (command.AssignedUserId is { } assignedUserId &&
-            !await store.UserBelongsToOrganizationAsync(user.OrganizationId, assignedUserId, cancellationToken))
+            await store.GetUserRoleAsync(user.OrganizationId, assignedUserId, cancellationToken) is not
+                (OrganizationRole.Administrator or OrganizationRole.CaseWorker))
         {
             throw new AssignedUserNotFoundException();
         }

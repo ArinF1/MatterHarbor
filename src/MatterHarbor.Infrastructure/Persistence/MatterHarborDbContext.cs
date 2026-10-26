@@ -36,6 +36,7 @@ public sealed class MatterHarborDbContext(DbContextOptions<MatterHarborDbContext
             builder.HasKey(x => x.Id);
             builder.Property(x => x.ExternalSubject).HasMaxLength(200).IsRequired();
             builder.Property(x => x.DisplayName).HasMaxLength(200).IsRequired();
+            builder.Property(x => x.Role).HasConversion<string>().HasMaxLength(20).IsRequired();
             builder.HasIndex(x => new { x.OrganizationId, x.ExternalSubject }).IsUnique();
             builder.HasOne<Organization>().WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
         });
@@ -81,7 +82,7 @@ public sealed class MatterHarborDbContext(DbContextOptions<MatterHarborDbContext
             builder.Property(x => x.Payload).HasColumnType("jsonb");
             builder.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
             builder.Property(x => x.LastErrorCode).HasMaxLength(100);
-            builder.HasIndex(x => new { x.Status, x.LockedUntil, x.OccurredAt });
+            builder.HasIndex(x => new { x.Status, x.NextAttemptAt, x.LockedUntil, x.OccurredAt });
             builder.HasIndex(x => new { x.OrganizationId, x.OccurredAt });
         });
     }

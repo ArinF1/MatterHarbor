@@ -183,6 +183,15 @@ var cases = app.MapGroup("/api/cases")
     .RequireAuthorization()
     .RequireRateLimiting("api");
 
+cases.MapGet("/assignees", async (
+    HttpContext context,
+    CaseQueryService service,
+    CancellationToken cancellationToken) =>
+{
+    var result = await service.ListAssigneesAsync(context.User.GetMatterHarborUser(), cancellationToken);
+    return Results.Ok(result);
+});
+
 cases.MapGet("/", async (
     HttpContext context,
     CaseQueryService service,
@@ -201,6 +210,7 @@ cases.MapGet("/{caseId:guid}", async (
     CancellationToken cancellationToken) =>
 {
     var result = await service.GetAsync(context.User.GetMatterHarborUser(), caseId, cancellationToken);
+    CaseVersionHeaders.SetEtag(context.Response, result.Version);
     return Results.Ok(result);
 });
 
@@ -217,6 +227,7 @@ cases.MapPost("/", async (
         new CreateCaseCommand(request.Title, request.Description, request.Priority, request.AssignedUserId),
         cancellationToken);
     context.Response.Headers["Idempotency-Replayed"] = result.IsReplay.ToString().ToLowerInvariant();
+    CaseVersionHeaders.SetEtag(context.Response, result.Case.Version);
     return result.IsReplay
         ? Results.Ok(result.Case)
         : Results.Created($"/api/cases/{result.Case.Id}", result.Case);
@@ -232,9 +243,30 @@ cases.MapPut("/{caseId:guid}/status", async (
     var result = await service.ExecuteAsync(
         context.User.GetMatterHarborUser(),
         caseId,
-        new ChangeCaseStatusCommand(request.Status, request.Version),
+        context.Request.Headers["Idempotency-Key"].ToString(),
+        new ChangeCaseStatusCommand(request.Status, CaseVersionHeaders.ExpectedVersion(context.Request)),
         cancellationToken);
-    return Results.Ok(result);
+    context.Response.Headers["Idempotency-Replayed"] = result.IsReplay.ToString().ToLowerInvariant();
+    CaseVersionHeaders.SetEtag(context.Response, result.Case.Version);
+    return Results.Ok(result.Case);
+});
+
+cases.MapPut("/{caseId:guid}/assignment", async (
+    Guid caseId,
+    ChangeCaseAssignmentRequest request,
+    HttpContext context,
+    ChangeCaseAssignmentService service,
+    CancellationToken cancellationToken) =>
+{
+    var result = await service.ExecuteAsync(
+        context.User.GetMatterHarborUser(),
+        caseId,
+        context.Request.Headers["Idempotency-Key"].ToString(),
+        new ChangeCaseAssignmentCommand(request.AssignedUserId, CaseVersionHeaders.ExpectedVersion(context.Request)),
+        cancellationToken);
+    context.Response.Headers["Idempotency-Replayed"] = result.IsReplay.ToString().ToLowerInvariant();
+    CaseVersionHeaders.SetEtag(context.Response, result.Case.Version);
+    return Results.Ok(result.Case);
 });
 
 if (app.Environment.IsDevelopment())

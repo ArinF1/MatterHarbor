@@ -2,7 +2,7 @@
 
 MatterHarbor is not production-ready. Do not use it with real personal data.
 
-The API applies migrations and fictional seed data only in `Development`. Every other environment must use the versioned migration bundle built and smoke-tested by CI. The bundle is a deployment artifact, not a separate long-running process.
+The API applies migrations and fictional seed data only in `Development`. Every other environment must use the versioned migration bundle built and smoke-tested by CI. The bundle is a deployment artifact, not a separate long-running process. CI exercises a non-superuser migration role separately from schema-restricted API and worker roles.
 
 ## Artifact
 
@@ -36,7 +36,7 @@ FROM matterharbor."__EFMigrationsHistory"
 ORDER BY "MigrationId" DESC;
 ```
 
-The runtime API and worker identities must not own schema-altering permissions.
+The runtime API and worker identities must not own schema-altering permissions. The API needs case read/write, audit insert, idempotency read/insert, and outbox insert. The worker needs outbox read/update/delete. Grant each identity only the privileges required by its process.
 
 ## Apply once
 

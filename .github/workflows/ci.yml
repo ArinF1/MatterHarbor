@@ -74,7 +74,7 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     env:
-      MIGRATION_CONNECTION_STRING: Host=127.0.0.1;Port=5432;Database=matterharbor;Username=matterharbor;Password=matterharbor_ci
+      MIGRATION_CONNECTION_STRING: Host=127.0.0.1;Port=5432;Database=matterharbor;Username=matterharbor_migrator;Password=matterharbor_migrator_ci
       RUNTIME_CONNECTION_STRING: Host=127.0.0.1;Port=5432;Database=matterharbor;Username=matterharbor_api_runtime;Password=matterharbor_runtime_ci
     steps:
       - uses: actions/checkout@v7
@@ -87,6 +87,18 @@ jobs:
       - name: Build versioned migration bundle
         shell: pwsh
         run: ./scripts/build-migration-bundle.ps1 -SourceVersion $env:GITHUB_SHA
+      - name: Provision migration-only database role
+        run: |
+          docker exec --interactive "${{ job.services.postgres.id }}" \
+            psql -v ON_ERROR_STOP=1 -U matterharbor -d matterharbor <<'SQL'
+          REVOKE CREATE ON DATABASE matterharbor FROM PUBLIC;
+          CREATE ROLE matterharbor_migrator
+            LOGIN PASSWORD 'matterharbor_migrator_ci'
+            NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT;
+          GRANT CONNECT, CREATE ON DATABASE matterharbor TO matterharbor_migrator;
+          SQL
+          migrator_restricted="$(docker exec "${{ job.services.postgres.id }}" psql -U matterharbor -d matterharbor -tAc "SELECT count(*) FROM pg_roles WHERE rolname = 'matterharbor_migrator' AND NOT rolsuper AND NOT rolcreatedb AND NOT rolcreaterole;")"
+          test "$migrator_restricted" = "1"
       - name: Verify and apply migration bundle
         run: |
           cd "artifacts/migrations/$GITHUB_SHA"
@@ -106,12 +118,7 @@ jobs:
           test "${#migrations[@]}" -gt 0
           latest_index=$((${#migrations[@]} - 1))
           latest="${migrations[$latest_index]%.cs}"
-          if test "${#migrations[@]}" -gt 1; then
-            baseline_index=$((${#migrations[@]} - 2))
-            baseline="${migrations[$baseline_index]%.cs}"
-          else
-            baseline="$latest"
-          fi
+          baseline="${migrations[0]%.cs}"
           ./matterharbor-migrate "$baseline" --connection "$MIGRATION_CONNECTION_STRING" --no-color
           docker exec --interactive "${{ job.services.postgres.id }}" \
             psql -v ON_ERROR_STOP=1 -U matterharbor -d matterharbor \
@@ -121,12 +128,34 @@ jobs:
           test "$actual" = "$latest"
           preserved="$(docker exec "${{ job.services.postgres.id }}" psql -U matterharbor -d matterharbor -tAc "SELECT count(*) FROM matterharbor.cases WHERE \"Id\" = '33333333-3333-3333-3333-333333333333';")"
           test "$preserved" = "1"
+          role="$(docker exec "${{ job.services.postgres.id }}" psql -U matterharbor -d matterharbor -tAc "SELECT \"Role\" FROM matterharbor.organization_users WHERE \"Id\" = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';")"
+          test "$role" = "Administrator"
+          status="$(docker exec "${{ job.services.postgres.id }}" psql -U matterharbor -d matterharbor -tAc "SELECT \"Status\" FROM matterharbor.cases WHERE \"Id\" = '33333333-3333-3333-3333-333333333333';")"
+          test "$status" = "New"
+      - name: Exercise backup and restore with fictional v0.1 data
+        run: |
+          postgres="${{ job.services.postgres.id }}"
+          docker exec "$postgres" pg_dump -U matterharbor -d matterharbor \
+            --format=custom --no-owner --no-acl --file=/tmp/matterharbor-release.dump
+          docker exec "$postgres" createdb -U matterharbor matterharbor_restored
+          docker exec "$postgres" pg_restore -U matterharbor -d matterharbor_restored \
+            --exit-on-error --no-owner --no-acl /tmp/matterharbor-release.dump
+          restored_head="$(docker exec "$postgres" psql -U matterharbor -d matterharbor_restored -tAc 'SELECT "MigrationId" FROM matterharbor."__EFMigrationsHistory" ORDER BY "MigrationId" DESC LIMIT 1;')"
+          source_head="$(docker exec "$postgres" psql -U matterharbor -d matterharbor -tAc 'SELECT "MigrationId" FROM matterharbor."__EFMigrationsHistory" ORDER BY "MigrationId" DESC LIMIT 1;')"
+          test "$restored_head" = "$source_head"
+          restored_case="$(docker exec "$postgres" psql -U matterharbor -d matterharbor_restored -tAc "SELECT \"Status\" || ':' || \"CaseNumber\" FROM matterharbor.cases WHERE \"Id\" = '33333333-3333-3333-3333-333333333333';")"
+          test "$restored_case" = "New:MH-0001"
+          restored_role="$(docker exec "$postgres" psql -U matterharbor -d matterharbor_restored -tAc "SELECT \"Role\" FROM matterharbor.organization_users WHERE \"Id\" = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';")"
+          test "$restored_role" = "Administrator"
       - name: Provision and verify restricted runtime database role
         run: |
           docker exec --interactive "${{ job.services.postgres.id }}" \
             psql -v ON_ERROR_STOP=1 -U matterharbor -d matterharbor <<'SQL'
           CREATE ROLE matterharbor_api_runtime
             LOGIN PASSWORD 'matterharbor_runtime_ci'
+            NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT;
+          CREATE ROLE matterharbor_worker_runtime
+            LOGIN PASSWORD 'matterharbor_worker_ci'
             NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT;
           REVOKE CREATE ON DATABASE matterharbor FROM PUBLIC;
           REVOKE CREATE ON SCHEMA public FROM PUBLIC;
@@ -148,6 +177,10 @@ jobs:
           GRANT UPDATE
             ON matterharbor.cases
             TO matterharbor_api_runtime;
+          GRANT CONNECT ON DATABASE matterharbor TO matterharbor_worker_runtime;
+          GRANT USAGE ON SCHEMA matterharbor TO matterharbor_worker_runtime;
+          GRANT SELECT, UPDATE, DELETE ON matterharbor.outbox_messages
+            TO matterharbor_worker_runtime;
           SQL
           runtime_rows="$(
             docker exec --env PGPASSWORD=matterharbor_runtime_ci \
@@ -163,6 +196,19 @@ jobs:
               -c 'CREATE TABLE matterharbor.runtime_must_not_create (id integer);'
           then
             echo "Runtime role unexpectedly created a table."
+            exit 1
+          fi
+          worker_rows="$(docker exec --env PGPASSWORD=matterharbor_worker_ci \
+            "${{ job.services.postgres.id }}" psql -h 127.0.0.1 \
+            -U matterharbor_worker_runtime -d matterharbor \
+            -tAc 'SELECT count(*) FROM matterharbor.outbox_messages;')"
+          test "$worker_rows" = "1"
+          if docker exec --env PGPASSWORD=matterharbor_worker_ci \
+            "${{ job.services.postgres.id }}" psql -v ON_ERROR_STOP=1 \
+            -h 127.0.0.1 -U matterharbor_worker_runtime -d matterharbor \
+            -c 'CREATE TABLE matterharbor.worker_must_not_create (id integer);'
+          then
+            echo "Worker role unexpectedly created a table."
             exit 1
           fi
       - name: Smoke-test production startup against migrated schema
